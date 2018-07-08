@@ -3131,8 +3131,8 @@ var egret;
          * @private
          *
          */
-        MovieClip.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        MovieClip.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             this.setIsStopped(true);
         };
         //Data Function

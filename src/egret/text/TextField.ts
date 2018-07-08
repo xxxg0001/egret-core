@@ -1611,8 +1611,8 @@ namespace egret {
          * @private
          *
          */
-        public $onRemoveFromStage(): void {
-            super.$onRemoveFromStage();
+        public $onRemoveFromStage(notifyListeners: boolean): void {
+            super.$onRemoveFromStage(notifyListeners);
 
             this.removeEvent();
 

@@ -210,18 +210,31 @@ namespace egret {
             let self = this;
             self.$stage = stage;
             self.$nestLevel = nestLevel;
-            self.$hasAddToStage = true;
-            Sprite.$EVENT_ADD_TO_STAGE_LIST.push(self);
         }
 
         /**
          * @private
-         * 显示对象从舞台移除
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
-        $onRemoveFromStage(): void {
+        $dispatchAddedToStageEvent():void {
+            if (!this.$hasAddToStage) {
+                this.$hasAddToStage = true;
+                this.dispatchEventWith(Event.ADDED_TO_STAGE);    
+            }
+        }
+
+        /**
+         * @private
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
+         */
+        $onRemoveFromStage(notifyListeners: boolean): void {
             let self = this;
             self.$nestLevel = 0;
-            Sprite.$EVENT_REMOVE_FROM_STAGE_LIST.push(self);
+            if (notifyListeners && self.$hasAddToStage) {    
+                self.dispatchEventWith(Event.REMOVED_FROM_STAGE);
+            }
+            self.$hasAddToStage = false;
+            self.$stage = null;
         }
 
         /**

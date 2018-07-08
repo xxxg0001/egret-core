@@ -170,8 +170,8 @@ namespace eui {
          * @private
          *
          */
-        public $onRemoveFromStage(): void {
-            sys.UIComponentImpl.prototype["$onRemoveFromStage"].call(this);
+        public $onRemoveFromStage(notifyListeners: boolean): void {
+            sys.UIComponentImpl.prototype["$onRemoveFromStage"].call(this, notifyListeners);
             this.removeEventListener(egret.FocusEvent.FOCUS_IN, this.onfocusIn, this);
             this.removeEventListener(egret.FocusEvent.FOCUS_OUT, this.onfocusOut, this);
         }

@@ -439,9 +439,13 @@ declare namespace egret {
         $onAddToStage(stage: Stage, nestLevel: number): void;
         /**
          * @private
+         */
+        $dispatchAddedToStageEvent(): void;
+        /**
+         * @private
          * 显示对象从舞台移除
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
         /**
          * @private
          */
@@ -2907,9 +2911,13 @@ declare namespace egret {
         $onAddToStage(stage: Stage, nestLevel: number): void;
         /**
          * @private
+         */
+        $dispatchAddedToStageEvent(): void;
+        /**
+         * @private
          *
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
         /**
          * @private
          */
@@ -3164,7 +3172,7 @@ declare namespace egret {
          * @private
          * 显示对象从舞台移除
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
         /**
          * The Texture object being referenced.
          * If you pass the constructor of type BitmapData or last set for bitmapData, this value returns null.
@@ -10693,7 +10701,7 @@ declare namespace egret {
         /**
          * @private
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
     }
 }
 declare namespace egret {
@@ -10788,7 +10796,7 @@ declare namespace egret {
         /**
          * @private
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
     }
 }
 declare namespace egret {
@@ -12575,7 +12583,7 @@ declare namespace egret {
          * @private
          *
          */
-        $onRemoveFromStage(): void;
+        $onRemoveFromStage(notifyListeners: boolean): void;
         /**
          * @private
          *

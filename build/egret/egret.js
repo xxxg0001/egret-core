@@ -755,17 +755,28 @@ var egret;
             var self = this;
             self.$stage = stage;
             self.$nestLevel = nestLevel;
-            self.$hasAddToStage = true;
-            egret.Sprite.$EVENT_ADD_TO_STAGE_LIST.push(self);
+        };
+        /**
+         * @private
+         */
+        DisplayObject.prototype.$dispatchAddedToStageEvent = function () {
+            if (!this.$hasAddToStage) {
+                this.$hasAddToStage = true;
+                this.dispatchEventWith(egret.Event.ADDED_TO_STAGE);
+            }
         };
         /**
          * @private
          * 显示对象从舞台移除
          */
-        DisplayObject.prototype.$onRemoveFromStage = function () {
+        DisplayObject.prototype.$onRemoveFromStage = function (notifyListeners) {
             var self = this;
             self.$nestLevel = 0;
-            egret.Sprite.$EVENT_REMOVE_FROM_STAGE_LIST.push(self);
+            if (notifyListeners && self.$hasAddToStage) {
+                self.dispatchEventWith(egret.Event.REMOVED_FROM_STAGE);
+            }
+            self.$hasAddToStage = false;
+            self.$stage = null;
         };
         DisplayObject.prototype.$updateUseTransform = function () {
             var self = this;
@@ -4411,12 +4422,8 @@ var egret;
                 child.dispatchEventWith(egret.Event.ADDED, true);
             }
             if (stage) {
-                var list = DisplayObjectContainer.$EVENT_ADD_TO_STAGE_LIST;
-                while (list.length) {
-                    var childAddToStage = list.shift();
-                    if (childAddToStage.$stage && notifyListeners) {
-                        childAddToStage.dispatchEventWith(egret.Event.ADDED_TO_STAGE);
-                    }
+                if (notifyListeners) {
+                    child.$dispatchAddedToStageEvent();
                 }
             }
             if (egret.nativeRender) {
@@ -4631,17 +4638,7 @@ var egret;
                 child.dispatchEventWith(egret.Event.REMOVED, true);
             }
             if (this.$stage) {
-                child.$onRemoveFromStage();
-                var list = DisplayObjectContainer.$EVENT_REMOVE_FROM_STAGE_LIST;
-                while (list.length > 0) {
-                    var childAddToStage = list.shift();
-                    if (notifyListeners && childAddToStage.$hasAddToStage) {
-                        childAddToStage.$hasAddToStage = false;
-                        childAddToStage.dispatchEventWith(egret.Event.REMOVED_FROM_STAGE);
-                    }
-                    childAddToStage.$hasAddToStage = false;
-                    childAddToStage.$stage = null;
-                }
+                child.$onRemoveFromStage(notifyListeners);
             }
             var displayList = this.$displayList || this.$parentDisplayList;
             child.$setParent(null);
@@ -4891,15 +4888,29 @@ var egret;
         };
         /**
          * @private
+         */
+        DisplayObjectContainer.prototype.$dispatchAddedToStageEvent = function () {
+            _super.prototype.$dispatchAddedToStageEvent.call(this);
+            var children = this.$children;
+            var length = children.length;
+            for (var i = 0; i < length; i++) {
+                var child = this.$children[i];
+                if (child) {
+                    child.$dispatchAddedToStageEvent();
+                }
+            }
+        };
+        /**
+         * @private
          *
          */
-        DisplayObjectContainer.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        DisplayObjectContainer.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             var children = this.$children;
             var length = children.length;
             for (var i = 0; i < length; i++) {
                 var child = children[i];
-                child.$onRemoveFromStage();
+                child.$onRemoveFromStage(notifyListeners);
             }
         };
         /**
@@ -5419,8 +5430,8 @@ var egret;
          * @private
          * 显示对象从舞台移除
          */
-        Bitmap.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        Bitmap.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             var texture = this.$texture;
             if (texture) {
                 egret.BitmapData.$removeDisplayObject(this, texture.$bitmapData);
@@ -17168,8 +17179,8 @@ var egret;
         /**
          * @private
          */
-        Shape.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        Shape.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             if (this.$graphics) {
                 this.$graphics.$onRemoveFromStage();
             }
@@ -17370,8 +17381,8 @@ var egret;
         /**
          * @private
          */
-        Sprite.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        Sprite.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             if (this.$graphics) {
                 this.$graphics.$onRemoveFromStage();
             }
@@ -20394,8 +20405,8 @@ var egret;
          * @private
          *
          */
-        TextField.prototype.$onRemoveFromStage = function () {
-            _super.prototype.$onRemoveFromStage.call(this);
+        TextField.prototype.$onRemoveFromStage = function (notifyListeners) {
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             this.removeEvent();
             if (this.$TextField[24 /* type */] == egret.TextFieldType.INPUT) {
                 this.inputUtils._removeStageText();

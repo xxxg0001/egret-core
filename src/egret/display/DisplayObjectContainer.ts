@@ -187,12 +187,8 @@ namespace egret {
                 child.dispatchEventWith(Event.ADDED, true);
             }
             if (stage) {
-                let list = DisplayObjectContainer.$EVENT_ADD_TO_STAGE_LIST;
-                while (list.length) {
-                    let childAddToStage = list.shift();
-                    if (childAddToStage.$stage && notifyListeners) {
-                        childAddToStage.dispatchEventWith(Event.ADDED_TO_STAGE);
-                    }
+                if (notifyListeners) {
+                    child.$dispatchAddedToStageEvent();
                 }
             }
             if (egret.nativeRender) {
@@ -414,17 +410,7 @@ namespace egret {
                 child.dispatchEventWith(Event.REMOVED, true);
             }
             if (this.$stage) {//在舞台上
-                child.$onRemoveFromStage();
-                let list = DisplayObjectContainer.$EVENT_REMOVE_FROM_STAGE_LIST
-                while (list.length > 0) {
-                    let childAddToStage = list.shift();
-                    if (notifyListeners && childAddToStage.$hasAddToStage) {
-                        childAddToStage.$hasAddToStage = false;
-                        childAddToStage.dispatchEventWith(Event.REMOVED_FROM_STAGE);
-                    }
-                    childAddToStage.$hasAddToStage = false;
-                    childAddToStage.$stage = null;
-                }
+                child.$onRemoveFromStage(notifyListeners);
             }
             let displayList = this.$displayList || this.$parentDisplayList;
             child.$setParent(null);
@@ -687,15 +673,31 @@ namespace egret {
 
         /**
          * @private
-         *
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
-        $onRemoveFromStage(): void {
-            super.$onRemoveFromStage();
+        $dispatchAddedToStageEvent():void {
+            super.$dispatchAddedToStageEvent();
+            let children = this.$children;
+            let length = children.length;
+            for (let i = 0; i < length; i++) {
+                let child: DisplayObject = this.$children[i];
+                if(child) {
+                    child.$dispatchAddedToStageEvent();
+                }
+            }
+        }
+
+        /**
+         * @private
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
+         */
+        $onRemoveFromStage(notifyListeners: boolean): void {
+            super.$onRemoveFromStage(notifyListeners);
             let children = this.$children;
             let length = children.length;
             for (let i = 0; i < length; i++) {
                 let child: DisplayObject = children[i];
-                child.$onRemoveFromStage();
+                child.$onRemoveFromStage(notifyListeners);
             }
         }
 
