@@ -201,7 +201,7 @@ var EgretProjectData = /** @class */ (function () {
             var sourceDir = _this.getModulePath(m);
             var targetDir = _path.join(_this.getLibraryFolder(), name);
             var relative = _path.relative(_this.getProjectRoot(), sourceDir);
-            if (relative.indexOf("..") == -1 && !_path.isAbsolute(relative)) { // source 在项目中
+            if (relative.indexOf("..") == -1 && !_path.isAbsolute(relative)) {
                 targetDir = sourceDir;
             }
             targetDir = file.escapePath(_path.relative(_this.getProjectRoot(), targetDir)) + _path.sep;
@@ -348,7 +348,7 @@ function getEgretLauncherPath() {
     var npmEgretPath;
     if (process.platform === 'darwin') {
         var basicPath = '/usr/local';
-        if (!file.existsSync(basicPath)) { //some mac doesn't have path '/usr/local'
+        if (!file.existsSync(basicPath)) {
             basicPath = '/usr';
         }
         npmEgretPath = file.joinPath(basicPath, 'lib/node_modules/egret/EgretEngine');

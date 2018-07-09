@@ -271,7 +271,7 @@ var EXMLParser = /** @class */ (function () {
                         this.skinParts.push(id);
                     }
                     this.createVarForNode(node);
-                    if (this.isStateNode(node)) //检查节点是否只存在于一个状态里，需要单独实例化
+                    if (this.isStateNode(node))
                         this.stateIds.push(id);
                 }
                 else {
@@ -491,7 +491,7 @@ var EXMLParser = /** @class */ (function () {
             if (!value) {
                 continue;
             }
-            if (this.currentClass.getVariableByName(value)) { //赋的值对象是一个id
+            if (this.currentClass.getVariableByName(value)) {
                 var THIS = "this.";
                 var id = attributes.id;
                 var codeLine = THIS + id + " = t;";
