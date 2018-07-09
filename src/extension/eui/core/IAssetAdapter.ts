@@ -30,7 +30,8 @@
 namespace eui {
 
     export interface IAssetAdapter {
-
+        addResRel?(source: string)
+        delResRel?(source: string)
         getAsset(source: string, callBack: (content: any, source: string) => void, thisObject: any): void;
     }
 }

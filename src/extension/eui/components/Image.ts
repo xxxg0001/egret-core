@@ -195,9 +195,19 @@ namespace eui {
             return this._source;
         }
 
+        /**
+         * 目前引用的资源， 和_source的区别在于，rel在parseSource之后才会赋值
+         *
+         */
+        private rel:string
+
         public set source(value: string | egret.Texture) {
             if (value == this._source) {
                 return;
+            }
+            if (this.rel) {
+                delResRel(this.rel)
+                this.rel = null
             }
             this._source = value;
             if (this.$stage) {
@@ -209,6 +219,15 @@ namespace eui {
             }
         }
 
+        clearResRel() {
+            if (this.rel) {
+                delResRel(this.rel)
+                this.rel = null
+            }
+            this.sourceChanged = true;
+            this.invalidateProperties();
+        }
+        
         $setTexture(value: egret.Texture): boolean {
             if (value == this.$texture) {
                 return false;
@@ -229,6 +248,12 @@ namespace eui {
             this.sourceChanged = false;
             let source = this._source;
             if (source && typeof source == "string") {
+                if (this.rel) {
+                    delResRel(this.rel)
+                    this.rel = null
+                }
+                addResRel(source)
+                this.rel = source
 
                 getAssets(<string>this._source, (data) => {
                     if (source !== this._source)

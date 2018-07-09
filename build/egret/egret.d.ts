@@ -439,11 +439,17 @@ declare namespace egret {
         $onAddToStage(stage: Stage, nestLevel: number): void;
         /**
          * @private
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
         $dispatchAddedToStageEvent(): void;
         /**
+        * @public
+        * 清除资源引用
+        */
+        clearResRel(): void;
+        /**
          * @private
-         * 显示对象从舞台移除
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
         $onRemoveFromStage(notifyListeners: boolean): void;
         /**
@@ -2911,11 +2917,12 @@ declare namespace egret {
         $onAddToStage(stage: Stage, nestLevel: number): void;
         /**
          * @private
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
         $dispatchAddedToStageEvent(): void;
         /**
          * @private
-         *
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
         $onRemoveFromStage(notifyListeners: boolean): void;
         /**

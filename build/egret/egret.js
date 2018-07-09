@@ -758,6 +758,7 @@ var egret;
         };
         /**
          * @private
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
         DisplayObject.prototype.$dispatchAddedToStageEvent = function () {
             if (!this.$hasAddToStage) {
@@ -766,8 +767,22 @@ var egret;
             }
         };
         /**
+        * @public
+        * 清除资源引用
+        */
+        DisplayObject.prototype.clearResRel = function () {
+            var children = this.$children;
+            var length = children.length;
+            for (var i = 0; i < length; i++) {
+                var child = children[i];
+                if (child && child["clearResRel"]) {
+                    child["clearResRel"]();
+                }
+            }
+        };
+        /**
          * @private
-         * 显示对象从舞台移除
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
         DisplayObject.prototype.$onRemoveFromStage = function (notifyListeners) {
             var self = this;
@@ -4888,6 +4903,7 @@ var egret;
         };
         /**
          * @private
+         * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
         DisplayObjectContainer.prototype.$dispatchAddedToStageEvent = function () {
             _super.prototype.$dispatchAddedToStageEvent.call(this);
@@ -4902,7 +4918,7 @@ var egret;
         };
         /**
          * @private
-         *
+         * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
         DisplayObjectContainer.prototype.$onRemoveFromStage = function (notifyListeners) {
             _super.prototype.$onRemoveFromStage.call(this, notifyListeners);

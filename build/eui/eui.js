@@ -984,6 +984,26 @@ var eui;
 /// <reference path="Validator.ts" />
 var eui;
 (function (eui) {
+    function addResRel(source) {
+        var adapter = egret.getImplementation("eui.IAssetAdapter");
+        if (!adapter) {
+            adapter = new eui.DefaultAssetAdapter();
+        }
+        if (adapter.addResRel) {
+            adapter.addResRel(source);
+        }
+    }
+    eui.addResRel = addResRel;
+    function delResRel(source) {
+        var adapter = egret.getImplementation("eui.IAssetAdapter");
+        if (!adapter) {
+            adapter = new eui.DefaultAssetAdapter();
+        }
+        if (adapter.delResRel) {
+            adapter.delResRel(source);
+        }
+    }
+    eui.delResRel = delResRel;
     function getAssets(source, callback) {
         var adapter = egret.getImplementation("eui.IAssetAdapter");
         if (!adapter) {
@@ -10501,6 +10521,10 @@ var eui;
                 if (value == this._source) {
                     return;
                 }
+                if (this.rel) {
+                    eui.delResRel(this.rel);
+                    this.rel = null;
+                }
                 this._source = value;
                 if (this.$stage) {
                     this.parseSource();
@@ -10513,6 +10537,14 @@ var eui;
             enumerable: true,
             configurable: true
         });
+        Image.prototype.clearResRel = function () {
+            if (this.rel) {
+                eui.delResRel(this.rel);
+                this.rel = null;
+            }
+            this.sourceChanged = true;
+            this.invalidateProperties();
+        };
         Image.prototype.$setTexture = function (value) {
             if (value == this.$texture) {
                 return false;
@@ -10532,6 +10564,12 @@ var eui;
             this.sourceChanged = false;
             var source = this._source;
             if (source && typeof source == "string") {
+                if (this.rel) {
+                    eui.delResRel(this.rel);
+                    this.rel = null;
+                }
+                eui.addResRel(source);
+                this.rel = source;
                 eui.getAssets(this._source, function (data) {
                     if (source !== _this._source)
                         return;

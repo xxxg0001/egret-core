@@ -31,7 +31,26 @@
 
 namespace eui {
 
+    export function addResRel(source: string) {
+        let adapter: IAssetAdapter = egret.getImplementation("eui.IAssetAdapter");
+        if (!adapter) {
+            adapter = new DefaultAssetAdapter();
+        }
+        if (adapter.addResRel) {
+            adapter.addResRel(source);
+        }
+        
+    }
 
+    export function delResRel(source: string) {
+        let adapter: IAssetAdapter = egret.getImplementation("eui.IAssetAdapter");
+        if (!adapter) {
+            adapter = new DefaultAssetAdapter();
+        }
+        if (adapter.delResRel) {
+            adapter.delResRel(source);
+        }
+    }
 
     export function getAssets(source: string, callback: (content: any) => void) {
         let adapter: IAssetAdapter = egret.getImplementation("eui.IAssetAdapter");

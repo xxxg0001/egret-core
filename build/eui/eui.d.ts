@@ -380,6 +380,8 @@ declare namespace eui.sys {
     }
 }
 declare namespace eui {
+    function addResRel(source: string): void;
+    function delResRel(source: string): void;
     function getAssets(source: string, callback: (content: any) => void): void;
     function getTheme(source: string, callback: (content: any) => void): void;
     /**
@@ -6248,6 +6250,12 @@ declare namespace eui {
          * @language zh_CN
          */
         source: string | egret.Texture;
+        /**
+         * 目前引用的资源， 和_source的区别在于，rel在parseSource之后才会赋值
+         *
+         */
+        private rel;
+        clearResRel(): void;
         $setTexture(value: egret.Texture): boolean;
         /**
          * @private
@@ -11168,6 +11176,8 @@ declare namespace eui {
 }
 declare namespace eui {
     interface IAssetAdapter {
+        addResRel?(source: string): any;
+        delResRel?(source: string): any;
         getAsset(source: string, callBack: (content: any, source: string) => void, thisObject: any): void;
     }
 }
