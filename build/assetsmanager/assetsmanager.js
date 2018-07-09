@@ -713,7 +713,7 @@ var RES;
         },
         unload: function (r) { return RES.queue.unloadResource(r); },
         save: function (resource, data) {
-            RES.host.state[resource.root + resource.name] = 2;
+            RES.host.state[resource.root + resource.name] = 2 /* saved */;
             resource.promise = undefined;
             __tempCache[resource.url] = data;
         },
@@ -721,7 +721,7 @@ var RES;
             return __tempCache[resource.url];
         },
         remove: function (resource) {
-            RES.host.state[resource.root + resource.name] = 0;
+            RES.host.state[resource.root + resource.name] = 0 /* none */;
             delete __tempCache[resource.url];
         }
     };
@@ -789,6 +789,226 @@ var RES;
         }
         upgrade.setUpgradeGuideLevel = setUpgradeGuideLevel;
     })(upgrade = RES.upgrade || (RES.upgrade = {}));
+})(RES || (RES = {}));
+//////////////////////////////////////////////////////////////////////////////////////
+//
+//  Copyright (c) 2014-present, Egret Technology.
+//  All rights reserved.
+//  Redistribution and use in source and binary forms, with or without
+//  modification, are permitted provided that the following conditions are met:
+//
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of the Egret nor the
+//       names of its contributors may be used to endorse or promote products
+//       derived from this software without specific prior written permission.
+//
+//  THIS SOFTWARE IS PROVIDED BY EGRET AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+//  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+//  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+//  IN NO EVENT SHALL EGRET AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+//  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+//  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;LOSS OF USE, DATA,
+//  OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+//  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+//
+//////////////////////////////////////////////////////////////////////////////////////
+var RES;
+(function (RES) {
+    /**
+     * The events of resource loading.
+     * @version Egret 2.4
+     * @platform Web,Native
+     * @language en_US
+     */
+    /**
+     * 资源加载事件。
+     * @version Egret 2.4
+     * @platform Web,Native
+     * @language zh_CN
+     */
+    var ResourceEvent = (function (_super) {
+        __extends(ResourceEvent, _super);
+        /**
+         * Creates an Event object to pass as a parameter to event listeners.
+         * @param type  The type of the event, accessible as Event.type.
+         * @param bubbles  Determines whether the Event object participates in the bubbling stage of the event flow. The default value is false.
+         * @param cancelable Determines whether the Event object can be canceled. The default values is false.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @private
+         * @language en_US
+         */
+        /**
+         * 创建一个作为参数传递给事件侦听器的 Event 对象。
+         * @param type  事件的类型，可以作为 Event.type 访问。
+         * @param bubbles  确定 Event 对象是否参与事件流的冒泡阶段。默认值为 false。
+         * @param cancelable 确定是否可以取消 Event 对象。默认值为 false。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @private
+         * @language zh_CN
+         */
+        function ResourceEvent(type, bubbles, cancelable) {
+            if (bubbles === void 0) { bubbles = false; }
+            if (cancelable === void 0) { cancelable = false; }
+            var _this = _super.call(this, type, bubbles, cancelable) || this;
+            /**
+             * File number that has been loaded.
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language en_US
+             */
+            /**
+             * 已经加载的文件数。
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language zh_CN
+             */
+            _this.itemsLoaded = 0;
+            /**
+             * Total file number to load.
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language en_US
+             */
+            /**
+             * 要加载的总文件数。
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language zh_CN
+             */
+            _this.itemsTotal = 0;
+            /**
+             * Resource group name.
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language en_US
+             */
+            /**
+             * 资源组名。
+             * @version Egret 2.4
+             * @platform Web,Native
+             * @language zh_CN
+             */
+            _this.groupName = "";
+            return _this;
+        }
+        /**
+         * 使用指定的EventDispatcher对象来抛出事件对象。抛出的对象将会缓存在对象池上，供下次循环复用。
+         * @method RES.ResourceEvent.dispatchResourceEvent
+         * @param target {egret.IEventDispatcher}
+         * @param type {string}
+         * @param groupName {string}
+         * @param resItem {egret.ResourceItem}
+         * @param itemsLoaded {number}
+         * @param itemsTotal {number}
+         * @internal
+         * @private
+         */
+        ResourceEvent.dispatchResourceEvent = function (target, type, groupName, resItem, itemsLoaded, itemsTotal) {
+            if (groupName === void 0) { groupName = ""; }
+            if (resItem === void 0) { resItem = undefined; }
+            if (itemsLoaded === void 0) { itemsLoaded = 0; }
+            if (itemsTotal === void 0) { itemsTotal = 0; }
+            var event = egret.Event.create(ResourceEvent, type);
+            event.groupName = groupName;
+            if (resItem) {
+                event.resItem = RES.ResourceItem.convertToResItem(resItem);
+            }
+            event.itemsLoaded = itemsLoaded;
+            event.itemsTotal = itemsTotal;
+            var result = target.dispatchEvent(event);
+            egret.Event.release(event);
+            return result;
+        };
+        /**
+         * Failure event for a load item.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 一个加载项加载失败事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.ITEM_LOAD_ERROR = "itemLoadError";
+        /**
+         * Configure file to load and parse the completion event. Note: if a configuration file is loaded, it will not be thrown out, and if you want to handle the configuration loading failure, monitor the CONFIG_LOAD_ERROR event.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 配置文件加载并解析完成事件。注意：若有配置文件加载失败，将不会抛出此事件，若要处理配置加载失败，请同时监听 CONFIG_LOAD_ERROR 事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.CONFIG_COMPLETE = "configComplete";
+        /**
+         * Configuration file failed to load.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 配置文件加载失败事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.CONFIG_LOAD_ERROR = "configLoadError";
+        /**
+         * Delay load group resource loading progress event.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 延迟加载组资源加载进度事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.GROUP_PROGRESS = "groupProgress";
+        /**
+         * Delay load group resource to complete event. Note: if you have a resource item loading failure, the event will not be thrown, if you want to handle the group load failure, please listen to the GROUP_LOAD_ERROR event.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 延迟加载组资源加载完成事件。注意：若组内有资源项加载失败，将不会抛出此事件，若要处理组加载失败，请同时监听 GROUP_LOAD_ERROR 事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.GROUP_COMPLETE = "groupComplete";
+        /**
+         * Delayed load group resource failed event.
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language en_US
+         */
+        /**
+         * 延迟加载组资源加载失败事件。
+         * @version Egret 2.4
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        ResourceEvent.GROUP_LOAD_ERROR = "groupLoadError";
+        return ResourceEvent;
+    }(egret.Event));
+    RES.ResourceEvent = ResourceEvent;
+    __reflect(ResourceEvent.prototype, "RES.ResourceEvent");
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
@@ -944,7 +1164,12 @@ var RES;
                             case 0: return [4 /*yield*/, host.load(resource, 'text')];
                             case 1:
                                 text = _a.sent();
-                                data = JSON.parse(text);
+                                try {
+                                    data = JSON.parse(text);
+                                }
+                                catch (e) {
+                                    egret.error(resource.name, e);
+                                }
                                 return [2 /*return*/, data];
                         }
                     });
@@ -1003,20 +1228,21 @@ var RES;
         processor_1.SheetProcessor = {
             onLoadStart: function (host, resource) {
                 return __awaiter(this, void 0, void 0, function () {
-                    var data, r, imageName, texture, frames, spriteSheet, subkey, config, texture, str, list;
+                    var data, imageName, r, texture, frames, spriteSheet, subkey, config, texture, str, list;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, host.load(resource, "json")];
                             case 1:
                                 data = _a.sent();
-                                r = host.resourceConfig.getResource(RES.nameSelector(data.file));
+                                imageName = getRelativePath(resource.name, data.file);
+                                r = host.resourceConfig.getResource(imageName);
                                 if (!r) {
-                                    imageName = getRelativePath(resource.url, data.file);
                                     r = { name: imageName, url: imageName, type: 'image', root: resource.root };
                                 }
                                 return [4 /*yield*/, host.load(r)];
                             case 2:
                                 texture = _a.sent();
+                                host.state[r.name] = 0 /* none */;
                                 frames = data.frames;
                                 spriteSheet = new egret.SpriteSheet(texture);
                                 spriteSheet["$resourceInfo"] = r;
@@ -1038,7 +1264,7 @@ var RES;
             getData: function (host, resource, key, subkey) {
                 var data = host.get(resource);
                 if (data) {
-                    return data.getTexture(subkey);
+                    return data.getTexture(RES.path.basename(subkey).split(".").join("_"));
                 }
                 else {
                     return null;
@@ -1075,7 +1301,7 @@ var RES;
         processor_1.FontProcessor = {
             onLoadStart: function (host, resource) {
                 return __awaiter(this, void 0, void 0, function () {
-                    var data, config, imageName, r, texture, font;
+                    var data, config, imageFileName, r, texture, font;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, host.load(resource, 'text')];
@@ -1087,19 +1313,21 @@ var RES;
                                 catch (e) {
                                     config = data;
                                 }
-                                if (typeof config === 'string') {
-                                    imageName = fontGetTexturePath(resource.url, config);
-                                }
-                                else {
-                                    imageName = getRelativePath(resource.url, config.file);
-                                }
-                                r = host.resourceConfig.getResource(RES.nameSelector(imageName));
+                                imageFileName = resource.name.replace("fnt", "png");
+                                r = host.resourceConfig.getResource(imageFileName);
                                 if (!r) {
-                                    r = { name: imageName, url: imageName, type: 'image', root: resource.root };
+                                    if (typeof config === 'string') {
+                                        imageFileName = fontGetTexturePath(resource.url, config);
+                                    }
+                                    else {
+                                        imageFileName = getRelativePath(resource.url, config.file);
+                                    }
+                                    r = { name: imageFileName, url: imageFileName, type: 'image', root: resource.root };
                                 }
                                 return [4 /*yield*/, host.load(r)];
                             case 2:
                                 texture = _a.sent();
+                                host.state[r.name] = 0 /* none */;
                                 font = new egret.BitmapFont(texture, config);
                                 font["$resourceInfo"] = r;
                                 // todo refactor
@@ -1153,6 +1381,7 @@ var RES;
                     return host.load(imageResource);
                 }).then(function (value) {
                     host.save(imageResource, value);
+                    host.state[imageResource.name] = 0 /* none */;
                     var mcTexture = value;
                     var mcDataFactory = new egret.MovieClipDataFactory(mcData, mcTexture);
                     return mcDataFactory;
@@ -1609,226 +1838,6 @@ var RES;
 var RES;
 (function (RES) {
     /**
-     * The events of resource loading.
-     * @version Egret 2.4
-     * @platform Web,Native
-     * @language en_US
-     */
-    /**
-     * 资源加载事件。
-     * @version Egret 2.4
-     * @platform Web,Native
-     * @language zh_CN
-     */
-    var ResourceEvent = (function (_super) {
-        __extends(ResourceEvent, _super);
-        /**
-         * Creates an Event object to pass as a parameter to event listeners.
-         * @param type  The type of the event, accessible as Event.type.
-         * @param bubbles  Determines whether the Event object participates in the bubbling stage of the event flow. The default value is false.
-         * @param cancelable Determines whether the Event object can be canceled. The default values is false.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @private
-         * @language en_US
-         */
-        /**
-         * 创建一个作为参数传递给事件侦听器的 Event 对象。
-         * @param type  事件的类型，可以作为 Event.type 访问。
-         * @param bubbles  确定 Event 对象是否参与事件流的冒泡阶段。默认值为 false。
-         * @param cancelable 确定是否可以取消 Event 对象。默认值为 false。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @private
-         * @language zh_CN
-         */
-        function ResourceEvent(type, bubbles, cancelable) {
-            if (bubbles === void 0) { bubbles = false; }
-            if (cancelable === void 0) { cancelable = false; }
-            var _this = _super.call(this, type, bubbles, cancelable) || this;
-            /**
-             * File number that has been loaded.
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language en_US
-             */
-            /**
-             * 已经加载的文件数。
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language zh_CN
-             */
-            _this.itemsLoaded = 0;
-            /**
-             * Total file number to load.
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language en_US
-             */
-            /**
-             * 要加载的总文件数。
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language zh_CN
-             */
-            _this.itemsTotal = 0;
-            /**
-             * Resource group name.
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language en_US
-             */
-            /**
-             * 资源组名。
-             * @version Egret 2.4
-             * @platform Web,Native
-             * @language zh_CN
-             */
-            _this.groupName = "";
-            return _this;
-        }
-        /**
-         * 使用指定的EventDispatcher对象来抛出事件对象。抛出的对象将会缓存在对象池上，供下次循环复用。
-         * @method RES.ResourceEvent.dispatchResourceEvent
-         * @param target {egret.IEventDispatcher}
-         * @param type {string}
-         * @param groupName {string}
-         * @param resItem {egret.ResourceItem}
-         * @param itemsLoaded {number}
-         * @param itemsTotal {number}
-         * @internal
-         * @private
-         */
-        ResourceEvent.dispatchResourceEvent = function (target, type, groupName, resItem, itemsLoaded, itemsTotal) {
-            if (groupName === void 0) { groupName = ""; }
-            if (resItem === void 0) { resItem = undefined; }
-            if (itemsLoaded === void 0) { itemsLoaded = 0; }
-            if (itemsTotal === void 0) { itemsTotal = 0; }
-            var event = egret.Event.create(ResourceEvent, type);
-            event.groupName = groupName;
-            if (resItem) {
-                event.resItem = RES.ResourceItem.convertToResItem(resItem);
-            }
-            event.itemsLoaded = itemsLoaded;
-            event.itemsTotal = itemsTotal;
-            var result = target.dispatchEvent(event);
-            egret.Event.release(event);
-            return result;
-        };
-        /**
-         * Failure event for a load item.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 一个加载项加载失败事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.ITEM_LOAD_ERROR = "itemLoadError";
-        /**
-         * Configure file to load and parse the completion event. Note: if a configuration file is loaded, it will not be thrown out, and if you want to handle the configuration loading failure, monitor the CONFIG_LOAD_ERROR event.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 配置文件加载并解析完成事件。注意：若有配置文件加载失败，将不会抛出此事件，若要处理配置加载失败，请同时监听 CONFIG_LOAD_ERROR 事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.CONFIG_COMPLETE = "configComplete";
-        /**
-         * Configuration file failed to load.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 配置文件加载失败事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.CONFIG_LOAD_ERROR = "configLoadError";
-        /**
-         * Delay load group resource loading progress event.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 延迟加载组资源加载进度事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.GROUP_PROGRESS = "groupProgress";
-        /**
-         * Delay load group resource to complete event. Note: if you have a resource item loading failure, the event will not be thrown, if you want to handle the group load failure, please listen to the GROUP_LOAD_ERROR event.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 延迟加载组资源加载完成事件。注意：若组内有资源项加载失败，将不会抛出此事件，若要处理组加载失败，请同时监听 GROUP_LOAD_ERROR 事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.GROUP_COMPLETE = "groupComplete";
-        /**
-         * Delayed load group resource failed event.
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language en_US
-         */
-        /**
-         * 延迟加载组资源加载失败事件。
-         * @version Egret 2.4
-         * @platform Web,Native
-         * @language zh_CN
-         */
-        ResourceEvent.GROUP_LOAD_ERROR = "groupLoadError";
-        return ResourceEvent;
-    }(egret.Event));
-    RES.ResourceEvent = ResourceEvent;
-    __reflect(ResourceEvent.prototype, "RES.ResourceEvent");
-})(RES || (RES = {}));
-//////////////////////////////////////////////////////////////////////////////////////
-//
-//  Copyright (c) 2014-present, Egret Technology.
-//  All rights reserved.
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions are met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above copyright
-//       notice, this list of conditions and the following disclaimer in the
-//       documentation and/or other materials provided with the distribution.
-//     * Neither the name of the Egret nor the
-//       names of its contributors may be used to endorse or promote products
-//       derived from this software without specific prior written permission.
-//
-//  THIS SOFTWARE IS PROVIDED BY EGRET AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
-//  OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
-//  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
-//  IN NO EVENT SHALL EGRET AND CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-//  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-//  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;LOSS OF USE, DATA,
-//  OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-//  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-//  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
-//  EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-//////////////////////////////////////////////////////////////////////////////////////
-var RES;
-(function (RES) {
-    /**
      * Resource term. One of the resources arrays in resource.json.
      * @version Egret 2.4
      * @platform Web,Native
@@ -2056,9 +2065,6 @@ var RES;
 //////////////////////////////////////////////////////////////////////////////////////
 var RES;
 (function (RES) {
-    RES.nameSelector = function (url) {
-        return RES.path.basename(url).split(".").join("_");
-    };
     /**
      * Conduct mapping injection with class definition as the value.
      * @param type Injection type.
@@ -2230,6 +2236,10 @@ var RES;
         return instance.hasRes(key);
     }
     RES.hasRes = hasRes;
+    function getState(key) {
+        return instance.getState(key);
+    }
+    RES.getState = getState;
     /**
      * The synchronization method for obtaining the cache has been loaded with the success of the resource.
      * <br>The type of resource and the corresponding return value types are as follows:
@@ -2345,6 +2355,10 @@ var RES;
      * @language zh_CN
      */
     function setMaxLoadingThread(thread) {
+        if (thread < 1) {
+            thread = 1;
+        }
+        RES.maxThread = thread;
         if (!instance)
             instance = new Resource();
         instance.setMaxLoadingThread(thread);
@@ -2367,6 +2381,8 @@ var RES;
      * @language zh_CN
      */
     function setMaxRetryTimes(retry) {
+        retry = Math.max(retry, 0);
+        RES.maxRetry = retry;
         instance.setMaxRetryTimes(retry);
     }
     RES.setMaxRetryTimes = setMaxRetryTimes;
@@ -2561,6 +2577,16 @@ var RES;
         Resource.prototype.hasRes = function (key) {
             return RES.config.getResourceWithSubkey(key) != null;
         };
+        Resource.prototype.getState = function (resKey) {
+            var result = RES.config.getResourceWithSubkey(resKey);
+            if (result) {
+                var r = result.r;
+                return RES.host.state[r.name];
+            }
+            else {
+                return 0 /* none */;
+            }
+        };
         /**
          * 通过key同步获取资源
          * @method RES.getRes
@@ -2600,6 +2626,7 @@ var RES;
                 }
                 return value;
             }, function (error) {
+                RES.host.state[r.name] = 0 /* none */;
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
@@ -2635,6 +2662,10 @@ var RES;
                 }
                 return value;
             }, function (error) {
+                if (!r) {
+                    throw 'never';
+                }
+                RES.host.state[r.name] = 0 /* none */;
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
@@ -2735,4 +2766,289 @@ var RES;
      * Resource单例
      */
     var instance;
+})(RES || (RES = {}));
+var RES;
+(function (RES) {
+    RES.cacheDuration = 30000;
+    var Loader = (function () {
+        function Loader() {
+            this.retry = 0;
+        }
+        Loader.prototype.get = function (url, handle, priority) {
+            if (priority === void 0) { priority = 0; }
+            RES.addRel(url);
+            this.url = url;
+            var data = RES.getRes(url);
+            if (data != null) {
+                handle(data);
+            }
+            else {
+                this.retry = 0;
+                this.dispatcher = RES.getDispatcher(url, priority);
+                this.handle = handle;
+                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+            }
+        };
+        Loader.prototype.onEvent = function (e) {
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+            }
+            if (this.handle) {
+                var _a = RES.config.getResourceWithSubkey(this.url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
+                var p = RES.processor.isSupport(r);
+                if (p && p.getData && subkey) {
+                    this.handle(p.getData(RES.host, r, key, subkey));
+                }
+                else {
+                    this.handle(e.data);
+                }
+                this.handle = undefined;
+            }
+        };
+        Loader.prototype.onError = function () {
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
+            }
+            if (this.retry < RES.maxRetry) {
+                this.retry++;
+                this.dispatcher = RES.getDispatcher(this.url, -this.retry);
+                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+            }
+            else {
+                this.handle = undefined;
+            }
+        };
+        Loader.prototype.release = function () {
+            this.handle = undefined;
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+                this.dispatcher = undefined;
+            }
+            if (this.url) {
+                RES.delRel(this.url);
+                this.url = undefined;
+            }
+        };
+        return Loader;
+    }());
+    RES.Loader = Loader;
+    __reflect(Loader.prototype, "RES.Loader");
+    var LoadItem = (function () {
+        function LoadItem(url, priority) {
+            this.url = url;
+            this.priority = priority;
+            this.time = egret.getTimer();
+        }
+        return LoadItem;
+    }());
+    RES.LoadItem = LoadItem;
+    __reflect(LoadItem.prototype, "RES.LoadItem");
+    function comp(a, b) {
+        if (a.priority == b.priority) {
+            return a.time - b.time;
+        }
+        else {
+            return a.priority - b.priority;
+        }
+    }
+    RES.lazyLoadMap = {};
+    RES.lazyLoadList = [];
+    function asyncLoad(url, handle, priority) {
+        if (priority === void 0) { priority = 0; }
+        this.getDispatcher(url, priority).once(egret.Event.COMPLETE, function (e) {
+            var _a = RES.config.getResourceWithSubkey(url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
+            var p = RES.processor.isSupport(r);
+            if (p && p.getData && subkey) {
+                handle(p.getData(RES.host, r, key, subkey));
+            }
+            else {
+                handle(e.data);
+            }
+        }, null);
+    }
+    RES.asyncLoad = asyncLoad;
+    function changePriority(url, priority) {
+        if (priority === void 0) { priority = 0; }
+        var result = RES.config.getResourceWithSubkey(url, true);
+        var info = RES.lazyLoadMap[result.key];
+        if (info == null) {
+            return;
+        }
+        if (!info.dispatcher) {
+            return;
+        }
+        if (RES.lazyLoadList.indexOf(info) >= 0) {
+            info.priority = priority;
+            RES.lazyLoadList.sort(comp);
+        }
+    }
+    RES.changePriority = changePriority;
+    function getDispatcher(url, priority) {
+        if (priority === void 0) { priority = 0; }
+        var result = RES.config.getResourceWithSubkey(url, true);
+        var info = RES.lazyLoadMap[result.key];
+        if (info == null) {
+            info = new LoadItem(url, priority);
+            RES.lazyLoadMap[result.key] = info;
+        }
+        if (!info.dispatcher) {
+            info.time = egret.getTimer();
+            info.dispatcher = new egret.EventDispatcher();
+            if (RES.lazyLoadList.indexOf(info) >= 0) {
+                egret.error("duplicate " + url + " " + result.key);
+            }
+            else {
+                RES.lazyLoadList.push(info);
+                RES.lazyLoadList.sort(comp);
+            }
+            if (RES.loadingCount < RES.maxThread) {
+                egret.callLater(next, null);
+            }
+        }
+        return info.dispatcher;
+    }
+    RES.getDispatcher = getDispatcher;
+    RES.loadingCount = 0;
+    RES.maxThread = 2;
+    RES.maxRetry = 3;
+    function next() {
+        var _loop_3 = function () {
+            if (RES.lazyLoadList.length <= 0) {
+                return "break";
+            }
+            var info = RES.lazyLoadList.pop();
+            if (info.dispatcher) {
+                RES.loadingCount++;
+                var _a = RES.config.getResourceWithSubkey(info.url, true), key_1 = _a.key, r_1 = _a.r, subkey = _a.subkey;
+                RES.queue.loadResource(r_1).then(function (value) {
+                    RES.host.save(r_1, value);
+                    RES.loadingCount--;
+                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
+                    if (dispathcher) {
+                        RES.lazyLoadMap[key_1].dispatcher = undefined;
+                        dispathcher.dispatchEventWith(egret.Event.COMPLETE, false, value, false);
+                    }
+                    else {
+                        egret.error(key_1 + " dispatcher is undefined");
+                    }
+                    if (RES.recycles[key_1]) {
+                        RES.recycles[key_1] = egret.getTimer() + ~~(RES.cacheDuration / 2);
+                    }
+                    egret.callLater(next, null);
+                }, function () {
+                    RES.loadingCount--;
+                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
+                    if (dispathcher) {
+                        RES.lazyLoadMap[key_1].dispatcher = undefined;
+                        dispathcher.dispatchEventWith(egret.IOErrorEvent.IO_ERROR);
+                    }
+                    else {
+                        egret.error(key_1 + " dispatcher is undefined");
+                    }
+                    RES.lazyLoadMap[key_1].dispatcher = undefined;
+                    RES.host.state[r_1.name] = 0 /* none */;
+                    egret.callLater(next, null);
+                });
+            }
+        };
+        while (RES.loadingCount < RES.maxThread) {
+            var state_2 = _loop_3();
+            if (state_2 === "break")
+                break;
+        }
+    }
+    RES.using = {};
+    RES.recycles = {};
+    function addRel(url) {
+        var key = RES.config.getResourceWithSubkey(url, true).key;
+        if (!RES.using[key]) {
+            if (RES.recycles[key] != null) {
+                delete RES.recycles[key];
+            }
+            RES.using[key] = 0;
+        }
+        RES.using[key]++;
+    }
+    RES.addRel = addRel;
+    function delRel(url, duration) {
+        if (duration === void 0) { duration = RES.cacheDuration; }
+        var key = RES.config.getResourceWithSubkey(url, true).key;
+        removes(key, 1, duration);
+    }
+    RES.delRel = delRel;
+    function removes(key, count, delay) {
+        var state = RES.getState(key);
+        if (!RES.using[key]) {
+            egret.error("remove resource fail not found " + key);
+            switch (state) {
+                case 1 /* loading */:
+                    RES.recycles[key] = egret.getTimer();
+                    break;
+                case 2 /* saved */:
+                    RES.destroyRes(key);
+                    break;
+            }
+            return;
+        }
+        RES.using[key] -= count;
+        if (RES.using[key] <= 0) {
+            RES.using[key] = 0;
+            switch (state) {
+                case 1 /* loading */:
+                case 2 /* saved */:
+                    var t = RES.recycles[key] || 0;
+                    RES.recycles[key] = Math.max(t, egret.getTimer() + delay);
+                    break;
+                default:
+                    var info = RES.lazyLoadMap[key];
+                    if (!info) {
+                        return;
+                    }
+                    if (info.dispatcher) {
+                        var i = RES.lazyLoadList.indexOf(info);
+                        if (i >= 0) {
+                            RES.lazyLoadList.splice(i, 1);
+                        }
+                        info.dispatcher = undefined;
+                    }
+                    break;
+            }
+        }
+    }
+    function startRecycleTimer(interval) {
+        setInterval(onRecycleTimer, interval);
+    }
+    RES.startRecycleTimer = startRecycleTimer;
+    function onRecycleTimer() {
+        var now = egret.getTimer();
+        for (var key in RES.recycles) {
+            if (now >= RES.recycles[key]) {
+                dispose(key);
+            }
+        }
+    }
+    function dispose(key) {
+        switch (RES.getState(key)) {
+            case 2 /* saved */:
+                RES.destroyRes(key);
+                delete RES.recycles[key];
+                break;
+            case 0 /* none */:
+            case 3 /* destroying */:
+                delete RES.recycles[key];
+                break;
+        }
+    }
+    function forceRecycle(n) {
+        var now = egret.getTimer() + n;
+        for (var key in RES.recycles) {
+            if (now >= RES.recycles[key]) {
+                dispose(key);
+            }
+        }
+    }
+    RES.forceRecycle = forceRecycle;
 })(RES || (RES = {}));

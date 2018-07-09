@@ -1,5 +1,10 @@
 module RES {
-
+    export const enum HostState{
+        none = 0,
+        loading = 1,
+        saved = 2,
+        destroying = 3,
+    }
     const __tempCache = {};
 
     /**
@@ -55,7 +60,7 @@ module RES {
         unload: (r: ResourceInfo) => queue.unloadResource(r),
 
         save(resource: ResourceInfo, data: any) {
-            host.state[resource.root + resource.name] = 2;
+            host.state[resource.root + resource.name] = HostState.saved;
             resource.promise = undefined;
             __tempCache[resource.url] = data;
         },
@@ -66,7 +71,7 @@ module RES {
         },
 
         remove(resource: ResourceInfo) {
-            host.state[resource.root + resource.name] = 0;
+            host.state[resource.root + resource.name] = HostState.none;
             delete __tempCache[resource.url];
         }
     }
@@ -78,7 +83,7 @@ module RES {
 
     export interface ProcessHost {
 
-        state: { [index: string]: number }
+        state: { [index: string]: HostState }
 
         resourceConfig: ResourceConfig;
 

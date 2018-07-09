@@ -132,6 +132,12 @@ declare module RES {
     }
 }
 declare module RES {
+    const enum HostState {
+        none = 0,
+        loading = 1,
+        saved = 2,
+        destroying = 3,
+    }
     /**
      * 整个资源加载系统的进程id，协助管理回调派发机制
      */
@@ -143,7 +149,7 @@ declare module RES {
     var queue: ResourceLoader;
     interface ProcessHost {
         state: {
-            [index: string]: number;
+            [index: string]: HostState;
         };
         resourceConfig: ResourceConfig;
         load: (resource: ResourceInfo, processor?: string | processor.Processor) => Promise<any>;
@@ -199,60 +205,6 @@ declare module RES {
     namespace upgrade {
         function setUpgradeGuideLevel(level: "warning" | "silent"): void;
     }
-}
-declare module RES.processor {
-    interface Processor {
-        onLoadStart(host: ProcessHost, resource: ResourceInfo): Promise<any>;
-        onRemoveStart(host: ProcessHost, resource: ResourceInfo): Promise<any>;
-        getData?(host: ProcessHost, resource: ResourceInfo, key: string, subkey: string): any;
-    }
-    function isSupport(resource: ResourceInfo): Processor;
-    function map(type: string, processor: Processor): void;
-    function getRelativePath(url: string, file: string): string;
-    var ImageProcessor: Processor;
-    var BinaryProcessor: Processor;
-    var TextProcessor: Processor;
-    var JsonProcessor: Processor;
-    var XMLProcessor: Processor;
-    var CommonJSProcessor: Processor;
-    const SheetProcessor: Processor;
-    var FontProcessor: Processor;
-    var SoundProcessor: Processor;
-    var MovieClipProcessor: Processor;
-    const MergeJSONProcessor: Processor;
-    const ResourceConfigProcessor: Processor;
-    const LegacyResourceConfigProcessor: Processor;
-    var PVRProcessor: Processor;
-    const _map: {
-        [index: string]: Processor;
-    };
-}
-declare module RES {
-    interface File {
-        url: string;
-        type: string;
-        name: string;
-        root: string;
-    }
-    interface Dictionary {
-        [file: string]: File | Dictionary;
-    }
-    interface FileSystem {
-        addFile(filename: string, type?: string, root?: string): any;
-        getFile(filename: string): File | null;
-        profile(): void;
-    }
-    class NewFileSystem {
-        private data;
-        constructor(data: Dictionary);
-        profile(): void;
-        addFile(filename: string, type?: string): void;
-        getFile(filename: string): File | null;
-        private reslove(dirpath);
-        private mkdir(dirpath);
-        private exists(dirpath);
-    }
-    var fileSystem: FileSystem;
 }
 declare module RES {
     /**
@@ -420,6 +372,60 @@ declare module RES {
          */
         resItem: ResourceItem;
     }
+}
+declare module RES.processor {
+    interface Processor {
+        onLoadStart(host: ProcessHost, resource: ResourceInfo): Promise<any>;
+        onRemoveStart(host: ProcessHost, resource: ResourceInfo): Promise<any>;
+        getData?(host: ProcessHost, resource: ResourceInfo, key: string, subkey: string): any;
+    }
+    function isSupport(resource: ResourceInfo): Processor;
+    function map(type: string, processor: Processor): void;
+    function getRelativePath(url: string, file: string): string;
+    var ImageProcessor: Processor;
+    var BinaryProcessor: Processor;
+    var TextProcessor: Processor;
+    var JsonProcessor: Processor;
+    var XMLProcessor: Processor;
+    var CommonJSProcessor: Processor;
+    const SheetProcessor: Processor;
+    var FontProcessor: Processor;
+    var SoundProcessor: Processor;
+    var MovieClipProcessor: Processor;
+    const MergeJSONProcessor: Processor;
+    const ResourceConfigProcessor: Processor;
+    const LegacyResourceConfigProcessor: Processor;
+    var PVRProcessor: Processor;
+    const _map: {
+        [index: string]: Processor;
+    };
+}
+declare module RES {
+    interface File {
+        url: string;
+        type: string;
+        name: string;
+        root: string;
+    }
+    interface Dictionary {
+        [file: string]: File | Dictionary;
+    }
+    interface FileSystem {
+        addFile(filename: string, type?: string, root?: string): any;
+        getFile(filename: string): File | null;
+        profile(): void;
+    }
+    class NewFileSystem {
+        private data;
+        constructor(data: Dictionary);
+        profile(): void;
+        addFile(filename: string, type?: string): void;
+        getFile(filename: string): File | null;
+        private reslove(dirpath);
+        private mkdir(dirpath);
+        private exists(dirpath);
+    }
+    var fileSystem: FileSystem;
 }
 declare module RES {
     /**
@@ -610,7 +616,6 @@ declare namespace RES {
 }
 declare module RES {
     type GetResAsyncCallback = (value?: any, key?: string) => any;
-    let nameSelector: (url: any) => string;
     /**
      * Conduct mapping injection with class definition as the value.
      * @param type Injection type.
@@ -748,6 +753,7 @@ declare module RES {
      * @language zh_CN
      */
     function hasRes(key: string): boolean;
+    function getState(key: string): HostState;
     /**
      * The synchronization method for obtaining the cache has been loaded with the success of the resource.
      * <br>The type of resource and the corresponding return value types are as follows:
@@ -1011,6 +1017,7 @@ declare module RES {
          * @returns {boolean}
          */
         hasRes(key: string): boolean;
+        getState(resKey: string): HostState;
         /**
          * 通过key同步获取资源
          * @method RES.getRes
@@ -1061,4 +1068,44 @@ declare module RES {
             url: string;
         }): void;
     }
+}
+declare module RES {
+    let cacheDuration: number;
+    class Loader {
+        url?: string;
+        dispatcher?: egret.EventDispatcher;
+        handle?: (data: any) => void;
+        retry: number;
+        get(url: string, handle: (data: any) => void, priority?: number): void;
+        private onEvent(e);
+        private onError();
+        release(): void;
+    }
+    class LoadItem {
+        dispatcher?: egret.EventDispatcher;
+        url: string;
+        priority: number;
+        time: number;
+        constructor(url: string, priority: number);
+    }
+    let lazyLoadMap: {
+        [key: string]: LoadItem;
+    };
+    let lazyLoadList: LoadItem[];
+    function asyncLoad(url: string, handle: (data: any) => void, priority?: number): void;
+    function changePriority(url: string, priority?: number): void;
+    function getDispatcher(url: string, priority?: number): egret.EventDispatcher;
+    let loadingCount: number;
+    let maxThread: number;
+    let maxRetry: number;
+    let using: {
+        [key: string]: number;
+    };
+    let recycles: {
+        [key: string]: number;
+    };
+    function addRel(url: string): void;
+    function delRel(url: string, duration?: number): void;
+    function startRecycleTimer(interval: number): void;
+    function forceRecycle(n: number): void;
 }

@@ -32,10 +32,6 @@ module RES {
 
     export type GetResAsyncCallback = (value?: any, key?: string) => any;
 
-    export let nameSelector = function (url) {
-        return path.basename(url).split(".").join("_");
-    }
-
     /**
      * Conduct mapping injection with class definition as the value.
      * @param type Injection type.
@@ -200,6 +196,10 @@ module RES {
         return instance.hasRes(key);
     }
 
+    export function getState(key:string):HostState {
+        return instance.getState(key)
+    }
+
     /**
      * The synchronization method for obtaining the cache has been loaded with the success of the resource.
      * <br>The type of resource and the corresponding return value types are as follows:
@@ -332,6 +332,10 @@ module RES {
      * @language zh_CN
      */
     export function setMaxLoadingThread(thread: number): void {
+        if (thread < 1) {
+            thread = 1;
+        }
+        RES.maxThread = thread
         if (!instance) instance = new Resource();
         instance.setMaxLoadingThread(thread);
     }
@@ -353,6 +357,8 @@ module RES {
      * @language zh_CN
      */
     export function setMaxRetryTimes(retry: number): void {
+        retry = Math.max(retry, 0);
+        RES.maxRetry = retry
         instance.setMaxRetryTimes(retry);
     }
 
@@ -547,6 +553,17 @@ module RES {
             return config.getResourceWithSubkey(key) != null;
         }
 
+        public getState(resKey: string):HostState {
+            let result = config.getResourceWithSubkey(resKey);
+            if (result) {
+                let r = result.r;
+                return host.state[r.name];
+            }
+            else {
+                return HostState.none;
+            }
+        }
+        
         /**
          * 通过key同步获取资源
          * @method RES.getRes
@@ -600,6 +617,7 @@ module RES {
                 }
                 return value;
             }, error => {
+	    	    host.state[r.name] = HostState.none
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })
@@ -636,6 +654,10 @@ module RES {
                 }
                 return value;
             }, error => {
+                if (!r) {
+                    throw 'never'
+                }
+	    	    host.state[r.name] = HostState.none
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })

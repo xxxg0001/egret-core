@@ -27,6 +27,7 @@
         "src/DEBUG.ts",
         "src/shim/native.ts",
         "src/shim/Resource.ts",
+        "src/shim/RescourceRecycler.ts",
         "../../../build/egret/egret.d.ts",
         "../../../build/game/game.d.ts"
     ]
