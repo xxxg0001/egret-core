@@ -230,8 +230,8 @@ module RES {
                         const i = lazyLoadList.indexOf(info)
                         if (i >= 0) {
                             lazyLoadList.splice(i, 1)
+                            info.dispatcher = undefined
                         }
-                        info.dispatcher = undefined
                     }
                     break
             }

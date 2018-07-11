@@ -3011,8 +3011,8 @@ var RES;
                         var i = RES.lazyLoadList.indexOf(info);
                         if (i >= 0) {
                             RES.lazyLoadList.splice(i, 1);
+                            info.dispatcher = undefined;
                         }
-                        info.dispatcher = undefined;
                     }
                     break;
             }
