@@ -69,7 +69,7 @@ var ExmlPlugin = /** @class */ (function () {
                     pluginContext.createFile('libs/exml.e.d.ts', new Buffer(dtsContents));
                 }
                 result = exml.publishEXML(this.exmls, this.publishPolicy);
-                if (result.EuiJson !== undefined) {
+                if (result.EuiJson !== undefined && result.EuiJson !== "{}") {
                     pluginContext.createFile("resource/gameEui.json", new Buffer("" + result.EuiJson));
                 }
                 //写入解析规则和定义

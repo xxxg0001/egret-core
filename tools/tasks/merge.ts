@@ -10,7 +10,6 @@ import * as fs from 'fs';
 
 
 
-
 type MergeConfig = {
 
     mergeSelector: (p: string) => string
@@ -22,8 +21,12 @@ export class ZipPlugin implements Plugin {
     private _zipCollection: {
         [index: string]: string[]
     } = {};
+    private contents: {[index: string]: Buffer} = {};
+
+
 
     constructor(private options: MergeConfig) {
+        
     }
 
     async onFile(file: File): Promise<File | null> {
@@ -32,7 +35,12 @@ export class ZipPlugin implements Plugin {
             if (!this._zipCollection[zipFile]) {
                 this._zipCollection[zipFile] = [];
             }
-            this._zipCollection[zipFile].push(file.origin);
+            if (!this.contents[file.origin]) {
+                this._zipCollection[zipFile].push(file.origin);
+            }
+            this.contents[file.origin] = file.contents;
+            
+            
             return null;
         }
         else {
@@ -42,10 +50,12 @@ export class ZipPlugin implements Plugin {
 
     async onFinish(pluginContext: PluginContext): Promise<void> {
 
-
+       
+        
         for (let zipFile in this._zipCollection) {
+            
             const files = this._zipCollection[zipFile]
-            const buffer = await zip(files);
+            const buffer = await zip(files, this.contents);
             pluginContext.createFile(zipFile, buffer, {
                 subkeys: files
             })
@@ -60,7 +70,7 @@ export class ZipPlugin implements Plugin {
 
 
 
-async function zip(sourceFiles: string[]) {
+async function zip(sourceFiles: string[], contents:{[index:string]:Buffer}) {
 
 
 
@@ -71,8 +81,8 @@ async function zip(sourceFiles: string[]) {
     FileUtil.createDirectory(tempDir2);
 
     for (let source of sourceFiles) {
-        const output = path.join(tempSourceDir, source)
-        FileUtil.copy(source, output);
+        const output = path.join(tempSourceDir, source.slice("resource/".length))
+        FileUtil.createFile(contents[source], output);
     }
     const relativePath = path.relative(egret.args.projectDir, process.cwd());
     const zipLibraryPath = path.join(egret.root, "tools/lib/zip/EGTZipTool_v1.0.2.js");

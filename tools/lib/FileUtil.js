@@ -204,6 +204,11 @@ function _copy_file(source_file, output_file) {
     var byteArray = FS.readFileSync(source_file);
     FS.writeFileSync(output_file, byteArray);
 }
+function createFile(byteArray, output_file) {
+    createDirectory(Path.dirname(output_file));
+    FS.writeFileSync(output_file, byteArray);
+}
+exports.createFile = createFile;
 function _copy_dir(sourceDir, outputDir) {
     createDirectory(outputDir);
     var list = readdirSync(sourceDir);

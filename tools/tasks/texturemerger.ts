@@ -30,6 +30,8 @@ export class TextureMergerPlugin implements Plugin {
 
     private removedList: string[] = [];
 
+    
+
     private configs: { [tmprojectFilename: string]: string[] } = {};
 
     constructor(private options: TextureMergerOptions) {

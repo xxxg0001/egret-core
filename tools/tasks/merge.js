@@ -43,6 +43,7 @@ var ZipPlugin = /** @class */ (function () {
     function ZipPlugin(options) {
         this.options = options;
         this._zipCollection = {};
+        this.contents = {};
     }
     ZipPlugin.prototype.onFile = function (file) {
         return __awaiter(this, void 0, void 0, function () {
@@ -53,7 +54,10 @@ var ZipPlugin = /** @class */ (function () {
                     if (!this._zipCollection[zipFile]) {
                         this._zipCollection[zipFile] = [];
                     }
-                    this._zipCollection[zipFile].push(file.origin);
+                    if (!this.contents[file.origin]) {
+                        this._zipCollection[zipFile].push(file.origin);
+                    }
+                    this.contents[file.origin] = file.contents;
                     return [2 /*return*/, null];
                 }
                 else {
@@ -78,7 +82,7 @@ var ZipPlugin = /** @class */ (function () {
                         if (!(_i < _a.length)) return [3 /*break*/, 4];
                         zipFile = _a[_i];
                         files = this._zipCollection[zipFile];
-                        return [4 /*yield*/, zip(files)];
+                        return [4 /*yield*/, zip(files, this.contents)];
                     case 2:
                         buffer = _c.sent();
                         pluginContext.createFile(zipFile, buffer, {
@@ -96,7 +100,7 @@ var ZipPlugin = /** @class */ (function () {
     return ZipPlugin;
 }());
 exports.ZipPlugin = ZipPlugin;
-function zip(sourceFiles) {
+function zip(sourceFiles, contents) {
     return __awaiter(this, void 0, void 0, function () {
         var tempSourceDir, tempDir2, _i, sourceFiles_1, source, output, relativePath, zipLibraryPath, outputPath, contentBuffer;
         return __generator(this, function (_a) {
@@ -108,8 +112,8 @@ function zip(sourceFiles) {
                     FileUtil.createDirectory(tempDir2);
                     for (_i = 0, sourceFiles_1 = sourceFiles; _i < sourceFiles_1.length; _i++) {
                         source = sourceFiles_1[_i];
-                        output = path.join(tempSourceDir, source);
-                        FileUtil.copy(source, output);
+                        output = path.join(tempSourceDir, source.slice("resource/".length));
+                        FileUtil.createFile(contents[source], output);
                     }
                     relativePath = path.relative(egret.args.projectDir, process.cwd());
                     zipLibraryPath = path.join(egret.root, "tools/lib/zip/EGTZipTool_v1.0.2.js");
