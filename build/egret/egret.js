@@ -767,20 +767,6 @@ var egret;
             }
         };
         /**
-        * @public
-        * 清除资源引用
-        */
-        DisplayObject.prototype.clearResRel = function () {
-            var children = this.$children;
-            var length = children.length;
-            for (var i = 0; i < length; i++) {
-                var child = children[i];
-                if (child && child["clearResRel"]) {
-                    child["clearResRel"]();
-                }
-            }
-        };
-        /**
          * @private
          * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
@@ -4913,6 +4899,20 @@ var egret;
                 var child = this.$children[i];
                 if (child) {
                     child.$dispatchAddedToStageEvent();
+                }
+            }
+        };
+        /**
+         * @public
+         * 清除资源引用
+         */
+        DisplayObjectContainer.prototype.clearResRel = function () {
+            var children = this.$children;
+            var length = children.length;
+            for (var i = 0; i < length; i++) {
+                var child = children[i];
+                if (child && child["clearResRel"]) {
+                    child["clearResRel"]();
                 }
             }
         };

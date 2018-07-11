@@ -223,22 +223,6 @@ namespace egret {
             }
         }
 
-         /**
-         * @public
-         * 清除资源引用
-         */
-        clearResRel() {
-            let children = this.$children;
-            let length = children.length;
-            for (let i = 0; i < length; i++) {
-                let child: DisplayObject = children[i];
-                if(child && child["clearResRel"]) {
-                    child["clearResRel"]()
-                }
-            }
-        }
-
-
         /**
          * @private
          * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点

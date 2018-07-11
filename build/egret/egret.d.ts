@@ -443,11 +443,6 @@ declare namespace egret {
          */
         $dispatchAddedToStageEvent(): void;
         /**
-        * @public
-        * 清除资源引用
-        */
-        clearResRel(): void;
-        /**
          * @private
          * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
          */
@@ -2920,6 +2915,11 @@ declare namespace egret {
          * 某个节点回调AddedToStageEvent时，不可移除或添加兄弟节点
          */
         $dispatchAddedToStageEvent(): void;
+        /**
+         * @public
+         * 清除资源引用
+         */
+        clearResRel(): void;
         /**
          * @private
          * 某个节点回调RemoveFromStageEvent时，不可移除或添加兄弟节点
