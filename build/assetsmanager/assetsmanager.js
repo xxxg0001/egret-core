@@ -1242,7 +1242,7 @@ var RES;
                                 return [4 /*yield*/, host.load(r)];
                             case 2:
                                 texture = _a.sent();
-                                host.state[r.name] = 0 /* none */;
+                                host.state[r.root + r.name] = 0 /* none */;
                                 frames = data.frames;
                                 spriteSheet = new egret.SpriteSheet(texture);
                                 spriteSheet["$resourceInfo"] = r;
@@ -1327,7 +1327,7 @@ var RES;
                                 return [4 /*yield*/, host.load(r)];
                             case 2:
                                 texture = _a.sent();
-                                host.state[r.name] = 0 /* none */;
+                                host.state[r.root + r.name] = 0 /* none */;
                                 font = new egret.BitmapFont(texture, config);
                                 font["$resourceInfo"] = r;
                                 // todo refactor
@@ -2581,7 +2581,7 @@ var RES;
             var result = RES.config.getResourceWithSubkey(resKey);
             if (result) {
                 var r = result.r;
-                return RES.host.state[r.name];
+                return RES.host.state[r.root + r.name];
             }
             else {
                 return 0 /* none */;
@@ -2626,7 +2626,7 @@ var RES;
                 }
                 return value;
             }, function (error) {
-                RES.host.state[r.name] = 0 /* none */;
+                RES.host.state[r.root + r.name] = 0 /* none */;
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
@@ -2665,7 +2665,7 @@ var RES;
                 if (!r) {
                     throw 'never';
                 }
-                RES.host.state[r.name] = 0 /* none */;
+                RES.host.state[r.root + r.name] = 0 /* none */;
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
@@ -2949,7 +2949,7 @@ var RES;
                         egret.error(key_1 + " dispatcher is undefined");
                     }
                     RES.lazyLoadMap[key_1].dispatcher = undefined;
-                    RES.host.state[r_1.name] = 0 /* none */;
+                    RES.host.state[r_1.root + r_1.name] = 0 /* none */;
                     egret.callLater(next, null);
                 });
             }

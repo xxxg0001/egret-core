@@ -557,7 +557,7 @@ module RES {
             let result = config.getResourceWithSubkey(resKey);
             if (result) {
                 let r = result.r;
-                return host.state[r.name];
+                return host.state[r.root + r.name];
             }
             else {
                 return HostState.none;
@@ -617,7 +617,7 @@ module RES {
                 }
                 return value;
             }, error => {
-	    	    host.state[r.name] = HostState.none
+	    	    host.state[r.root + r.name] = HostState.none
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })
@@ -657,7 +657,7 @@ module RES {
                 if (!r) {
                     throw 'never'
                 }
-	    	    host.state[r.name] = HostState.none
+	    	    host.state[r.root + r.name] = HostState.none
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })

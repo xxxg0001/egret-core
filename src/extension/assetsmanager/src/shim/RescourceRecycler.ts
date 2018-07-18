@@ -173,7 +173,7 @@ module RES {
                         egret.error(`${key} dispatcher is undefined`)
                     }
                     lazyLoadMap[key].dispatcher = undefined
-                    host.state[r.name] = HostState.none
+                    host.state[r.root + r.name] = HostState.none
                     egret.callLater(next, null)
                 })
             }

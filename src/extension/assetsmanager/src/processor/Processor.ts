@@ -212,7 +212,7 @@ module RES.processor {
                 r = { name: imageName, url: imageName, type: 'image', root: resource.root };
             }
             var texture: egret.Texture = await host.load(r);
-            host.state[r.name] = HostState.none
+            host.state[r.root + r.name] = HostState.none
             var frames: any = data.frames;
             var spriteSheet = new egret.SpriteSheet(texture);
             spriteSheet["$resourceInfo"] = r;
@@ -300,7 +300,7 @@ module RES.processor {
                 r = { name: imageFileName, url: imageFileName, type: 'image', root: resource.root };
             }
             var texture: egret.Texture = await host.load(r);
-            host.state[r.name] = HostState.none;
+            host.state[r.root + r.name] = HostState.none;
             var font = new egret.BitmapFont(texture, config);
             font["$resourceInfo"] = r;
             // todo refactor
