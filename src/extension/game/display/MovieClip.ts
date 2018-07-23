@@ -550,9 +550,11 @@ namespace egret {
          */
         private advanceFrame(): void {
             this.$currentFrameNum = this.$nextFrameNum;
-            let event = this.frameEvents[this.$nextFrameNum];
-            if (event && event != "") {
-                MovieClipEvent.dispatchMovieClipEvent(this, MovieClipEvent.FRAME_LABEL, event);
+            if (this.frameEvents) {
+                let event = this.frameEvents[this.$nextFrameNum];
+                if (event && event != "") {
+                    MovieClipEvent.dispatchMovieClipEvent(this, MovieClipEvent.FRAME_LABEL, event);
+                }
             }
         }
 

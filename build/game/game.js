@@ -3381,9 +3381,11 @@ var egret;
          */
         MovieClip.prototype.advanceFrame = function () {
             this.$currentFrameNum = this.$nextFrameNum;
-            var event = this.frameEvents[this.$nextFrameNum];
-            if (event && event != "") {
-                egret.MovieClipEvent.dispatchMovieClipEvent(this, egret.MovieClipEvent.FRAME_LABEL, event);
+            if (this.frameEvents) {
+                var event_1 = this.frameEvents[this.$nextFrameNum];
+                if (event_1 && event_1 != "") {
+                    egret.MovieClipEvent.dispatchMovieClipEvent(this, egret.MovieClipEvent.FRAME_LABEL, event_1);
+                }
             }
         };
         /**
@@ -3453,15 +3455,15 @@ var egret;
                 var isComplete = false;
                 var isLoopComplete = false;
                 for (var i = 0; i < length_3; i++) {
-                    var event_1 = eventPool.pop();
-                    if (event_1 == egret.Event.LOOP_COMPLETE) {
+                    var event_2 = eventPool.pop();
+                    if (event_2 == egret.Event.LOOP_COMPLETE) {
                         isLoopComplete = true;
                     }
-                    else if (event_1 == egret.Event.COMPLETE) {
+                    else if (event_2 == egret.Event.COMPLETE) {
                         isComplete = true;
                     }
                     else {
-                        this.dispatchEventWith(event_1);
+                        this.dispatchEventWith(event_2);
                     }
                 }
                 if (isLoopComplete) {
