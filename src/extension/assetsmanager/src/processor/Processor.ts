@@ -233,7 +233,7 @@ module RES.processor {
         getData(host, resource, key, subkey) {
             let data: egret.SpriteSheet = host.get(resource);
             if (data) {
-                return data.getTexture( path.basename(subkey).split(".").join("_"));
+                return data.getTexture(RES.nameSelector(subkey));
             }
             else {
                 return null;
@@ -288,16 +288,17 @@ module RES.processor {
                 config = data
             }
 
-            let imageFileName = resource.name.replace("fnt", "png");
-            let r = host.resourceConfig.getResource(imageFileName);
+            let imageName;
+            if (typeof config === 'string') {
+                imageName = fontGetTexturePath(resource.url, config)
+            }
+            else {
+                imageName = getRelativePath(resource.url, config.file);
+            }
+
+            let r = host.resourceConfig.getResource(imageName);
             if (!r) {
-                if (typeof config === 'string') {
-                    imageFileName = fontGetTexturePath(resource.url, config)
-                }
-                else {
-                    imageFileName = getRelativePath(resource.url, config.file);
-                }
-                r = { name: imageFileName, url: imageFileName, type: 'image', root: resource.root };
+                r = { name: imageName, url: imageName, type: 'image', root: resource.root };
             }
             var texture: egret.Texture = await host.load(r);
             host.state[r.root + r.name] = HostState.none;
@@ -460,7 +461,8 @@ module RES.processor {
         name: string;
         type: string;
         url: string;
-        subkeys?: string
+        subkeys?: string;
+        extra?: 1 | undefined;
     }
 
     export const LegacyResourceConfigProcessor: Processor = {
@@ -484,18 +486,20 @@ module RES.processor {
                             return fsData[filename]
                         },
 
-                        addFile: (filename, type, root) => {
+                        addFile: (filename, type, root, extra) => {
                             if (!type) type = "";
                             if (root == undefined) {
                                 root = "";
                             }
-                            fsData[filename] = { name: filename, type, url: filename, root };
+                            fsData[filename] = { name: filename, type, url: filename, root, extra };
                         },
 
                         profile: () => {
                             console.log(fsData);
+                        },
+                        removeFile: (filename) => {
+                            delete fsData[filename];
                         }
-
                     } as FileSystem;
                     resConfigData.fileSystem = fileSystem;
                 }
@@ -519,6 +523,7 @@ module RES.processor {
                         // ResourceConfig.
                     }
                 }
+                host.save(resource, resConfigData)
                 return resConfigData;
             })
 

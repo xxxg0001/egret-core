@@ -17,6 +17,7 @@
         "**/*.ts"
     ],
     "exclude": [
+        "lib/eui/JsonParserFactory.ts",
         "templates/**/*.ts",
         "lib/typescript-plus/lib/*.d.ts"
     ]

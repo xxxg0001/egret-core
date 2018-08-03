@@ -32,6 +32,10 @@ module RES {
 
     export type GetResAsyncCallback = (value?: any, key?: string) => any;
 
+    export let nameSelector = function (url) {
+        return path.basename(url).split(".").join("_");
+    }
+
     /**
      * Conduct mapping injection with class definition as the value.
      * @param type Injection type.
@@ -617,7 +621,7 @@ module RES {
                 }
                 return value;
             }, error => {
-	    	    host.state[r.root + r.name] = HostState.none
+                host.remove(r as ResourceInfo);
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })
@@ -640,7 +644,7 @@ module RES {
                     type = config.__temp__get__type__via__url(url);
                 }
                 // manager.config.addResourceData({ name: url, url: url });
-                r = { name: url, url, type, root: '' };
+                r = { name: url, url, type, root: '', extra: 1 };
                 config.addResourceData(r);
                 r = config.getResource(url);
                 if (!r) {
@@ -654,10 +658,7 @@ module RES {
                 }
                 return value;
             }, error => {
-                if (!r) {
-                    throw 'never'
-                }
-	    	    host.state[r.root + r.name] = HostState.none
+                host.remove(r as ResourceInfo);
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, "", r as ResourceInfo);
                 return Promise.reject(error);
             })

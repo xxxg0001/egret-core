@@ -70,8 +70,7 @@ module RES {
 
 		load(list: ResourceInfo[], groupName: string, priority: number, reporter?: PromiseTaskReporter): Promise<any> {
 			if (this.itemListDic[groupName]) {
-				if(!this.dispatcherDic[groupName])
-				{
+				if (!this.dispatcherDic[groupName]) {
 					const dispatcher = new egret.EventDispatcher();
 					this.dispatcherDic[groupName] = dispatcher;
 				}
@@ -141,6 +140,7 @@ module RES {
 							delete this.groupTotalDic[groupName];
 							delete this.numLoadedDic[groupName];
 							delete this.itemListDic[groupName];
+							delete this.reporterDic[groupName];
 							delete this.groupErrorDic[groupName];
 							const dispatcher: egret.EventDispatcher = this.dispatcherDic[groupName];
 							if (groupError) {
@@ -192,6 +192,7 @@ module RES {
 								delete this.numLoadedDic[groupName];
 								delete this.itemListDic[groupName];
 								delete this.groupErrorDic[groupName];
+								delete this.reporterDic[groupName];
 								const itemList = this.loadItemErrorDic[groupName];
 								delete this.loadItemErrorDic[groupName];
 								const dispatcher = this.dispatcherDic[groupName];
@@ -302,9 +303,12 @@ module RES {
 			}
 			const p = processor.isSupport(r);
 			if (p) {
-				host.state[r.root + r.name] = 3;
+				// host.state[r.root + r.name] = 3;
 				const promise = p.onRemoveStart(host, r);
 				host.remove(r);
+				if (r.extra == 1) {
+					config.removeResourceData(r);
+				}
 				return promise;
 			}
 			else {

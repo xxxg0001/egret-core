@@ -90,14 +90,15 @@ var RES;
                     fileSystem: null
                 };
             }
-            return RES.queue.loadResource(configItem).then(function (data) {
-                return _this.parseConfig(data);
-            }).catch(function (e) {
+            return RES.queue.loadResource(configItem).catch(function (e) {
                 if (!e.__resource_manager_error__) {
                     console.error(e.stack);
                     e = new RES.ResourceManagerError(1002);
                 }
+                RES.host.remove(configItem);
                 return Promise.reject(e);
+            }).then(function (data) {
+                return _this.parseConfig(data);
             });
         };
         /**
@@ -328,9 +329,18 @@ var RES;
             if (!data.type) {
                 data.type = this.__temp__get__type__via__url(data.url);
             }
-            RES.fileSystem.addFile(data.url, data.type, data.root);
+            RES.fileSystem.addFile(data.url, data.type, data.root, data.extra);
             if (data.name) {
                 this.config.alias[data.name] = data.url;
+            }
+        };
+        ResourceConfig.prototype.removeResourceData = function (data) {
+            if (!RES.hasRes(data.name)) {
+                return;
+            }
+            RES.fileSystem.removeFile(data.url);
+            if (this.config.alias[data.name]) {
+                delete this.config.alias[data.name];
             }
         };
         ResourceConfig.prototype.destory = function () {
@@ -342,6 +352,8 @@ var RES;
                 addFile: function () {
                 },
                 profile: function () {
+                },
+                removeFile: function () {
                 }
             };
             this.config = { groups: {}, alias: {}, fileSystem: emptyFileSystem, typeSelector: function (p) { return p; }, resourceRoot: "resources", mergeSelector: null };
@@ -489,6 +501,7 @@ var RES;
                         delete _this.groupTotalDic[groupName];
                         delete _this.numLoadedDic[groupName];
                         delete _this.itemListDic[groupName];
+                        delete _this.reporterDic[groupName];
                         delete _this.groupErrorDic[groupName];
                         var dispatcher = _this.dispatcherDic[groupName];
                         if (groupError) {
@@ -540,6 +553,7 @@ var RES;
                             delete _this.numLoadedDic[groupName];
                             delete _this.itemListDic[groupName];
                             delete _this.groupErrorDic[groupName];
+                            delete _this.reporterDic[groupName];
                             var itemList = _this.loadItemErrorDic[groupName];
                             delete _this.loadItemErrorDic[groupName];
                             var dispatcher = _this.dispatcherDic[groupName];
@@ -648,9 +662,12 @@ var RES;
             }
             var p = RES.processor.isSupport(r);
             if (p) {
-                RES.host.state[r.root + r.name] = 3;
+                // host.state[r.root + r.name] = 3;
                 var promise = p.onRemoveStart(RES.host, r);
                 RES.host.remove(r);
+                if (r.extra == 1) {
+                    RES.config.removeResourceData(r);
+                }
                 return promise;
             }
             else {
@@ -721,7 +738,7 @@ var RES;
             return __tempCache[resource.url];
         },
         remove: function (resource) {
-            RES.host.state[resource.root + resource.name] = 0 /* none */;
+            delete RES.host.state[resource.root + resource.name];
             delete __tempCache[resource.url];
         }
     };
@@ -1264,7 +1281,7 @@ var RES;
             getData: function (host, resource, key, subkey) {
                 var data = host.get(resource);
                 if (data) {
-                    return data.getTexture(RES.path.basename(subkey).split(".").join("_"));
+                    return data.getTexture(RES.nameSelector(subkey));
                 }
                 else {
                     return null;
@@ -1301,7 +1318,7 @@ var RES;
         processor_1.FontProcessor = {
             onLoadStart: function (host, resource) {
                 return __awaiter(this, void 0, void 0, function () {
-                    var data, config, imageFileName, r, texture, font;
+                    var data, config, imageName, r, texture, font;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0: return [4 /*yield*/, host.load(resource, 'text')];
@@ -1313,16 +1330,15 @@ var RES;
                                 catch (e) {
                                     config = data;
                                 }
-                                imageFileName = resource.name.replace("fnt", "png");
-                                r = host.resourceConfig.getResource(imageFileName);
+                                if (typeof config === 'string') {
+                                    imageName = fontGetTexturePath(resource.url, config);
+                                }
+                                else {
+                                    imageName = getRelativePath(resource.url, config.file);
+                                }
+                                r = host.resourceConfig.getResource(imageName);
                                 if (!r) {
-                                    if (typeof config === 'string') {
-                                        imageFileName = fontGetTexturePath(resource.url, config);
-                                    }
-                                    else {
-                                        imageFileName = getRelativePath(resource.url, config.file);
-                                    }
-                                    r = { name: imageFileName, url: imageFileName, type: 'image', root: resource.root };
+                                    r = { name: imageName, url: imageName, type: 'image', root: resource.root };
                                 }
                                 return [4 /*yield*/, host.load(r)];
                             case 2:
@@ -1468,16 +1484,19 @@ var RES;
                             getFile: function (filename) {
                                 return fsData[filename];
                             },
-                            addFile: function (filename, type, root) {
+                            addFile: function (filename, type, root, extra) {
                                 if (!type)
                                     type = "";
                                 if (root == undefined) {
                                     root = "";
                                 }
-                                fsData[filename] = { name: filename, type: type, url: filename, root: root };
+                                fsData[filename] = { name: filename, type: type, url: filename, root: root, extra: extra };
                             },
                             profile: function () {
                                 console.log(fsData);
+                            },
+                            removeFile: function (filename) {
+                                delete fsData[filename];
                             }
                         };
                         resConfigData.fileSystem = fileSystem;
@@ -1504,6 +1523,7 @@ var RES;
                         var resource_1 = _c[_b];
                         _loop_2(resource_1);
                     }
+                    host.save(resource, resConfigData);
                     return resConfigData;
                 });
             },
@@ -2065,6 +2085,9 @@ var RES;
 //////////////////////////////////////////////////////////////////////////////////////
 var RES;
 (function (RES) {
+    RES.nameSelector = function (url) {
+        return RES.path.basename(url).split(".").join("_");
+    };
     /**
      * Conduct mapping injection with class definition as the value.
      * @param type Injection type.
@@ -2626,7 +2649,7 @@ var RES;
                 }
                 return value;
             }, function (error) {
-                RES.host.state[r.root + r.name] = 0 /* none */;
+                RES.host.remove(r);
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
@@ -2648,7 +2671,7 @@ var RES;
                     type = RES.config.__temp__get__type__via__url(url);
                 }
                 // manager.config.addResourceData({ name: url, url: url });
-                r = { name: url, url: url, type: type, root: '' };
+                r = { name: url, url: url, type: type, root: '', extra: 1 };
                 RES.config.addResourceData(r);
                 r = RES.config.getResource(url);
                 if (!r) {
@@ -2662,10 +2685,7 @@ var RES;
                 }
                 return value;
             }, function (error) {
-                if (!r) {
-                    throw 'never';
-                }
-                RES.host.state[r.root + r.name] = 0 /* none */;
+                RES.host.remove(r);
                 RES.ResourceEvent.dispatchResourceEvent(_this, RES.ResourceEvent.ITEM_LOAD_ERROR, "", r);
                 return Promise.reject(error);
             });
