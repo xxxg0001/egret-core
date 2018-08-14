@@ -27,44 +27,43 @@
 //
 //////////////////////////////////////////////////////////////////////////////////////
 
-namespace egret {
+namespace RES {
 
-    export type runEgretOptions = {
-        renderMode?: string;
-        audioType?: number;
-        screenAdapter?: sys.IScreenAdapter;
-        antialias?: boolean;
-        canvasScaleFactor?: number;
-        calculateCanvasScaleFactor?: (context: CanvasRenderingContext2D) => number;
+    interface R {
+        v: string,
+        s: number
+    }
+    /**
+     * @private
+     */
+    export class NativeVersionController implements IVersionController {
 
-        //以下目前仅供微信小游戏使用
-        entryClassName?: string;
-        scaleMode?: string;
-        frameRate?: number;
-        contentWidth?: number;
-        contentHeight?: number;
-        orientation?: string;
-        maxTouches?: number;
-    };
+        private versionInfo: { [url: string]: R };
+        init() {
+            this.versionInfo = this.getLocalData("all.manifest");
+            return Promise.resolve();
+        }
+        public getVirtualUrl(url: string): string {
+            return url;
+        }
 
-    /**
-     * egret project entry function
-     * @param options An object containing the initialization properties for egret engine.
-     * @language en_US
-     */
-    /**
-     * egret工程入口函数
-     * @param options 一个可选对象，包含初始化Egret引擎需要的参数。
-     * @language zh_CN
-     */
-    export declare function runEgret(options?: runEgretOptions): void;
-    /**
-     * Refresh the screen display
-     * @language en_US
-     */
-    /**
-     * 刷新屏幕显示
-     * @language zh_CN
-     */
-    export declare function updateAllScreens(): void;
+        private getLocalData(filePath): any {
+            if (egret_native.readUpdateFileSync && egret_native.readResourceFileSync) {
+                //先取更新目录
+                var content: string = egret_native.readUpdateFileSync(filePath);
+                if (content != null) {
+                    return JSON.parse(content);
+                }
+                //再取资源目录
+                content = egret_native.readResourceFileSync(filePath);
+                if (content != null) {
+                    return JSON.parse(content);
+                }
+            }
+            return null;
+        }
+    }
+    if (egret.Capabilities.runtimeType == egret.RuntimeType.NATIVE) {
+        VersionController = NativeVersionController;
+    }
 }

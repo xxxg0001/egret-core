@@ -1,6 +1,7 @@
 import { Plugin, PluginContext, File } from "./index";
 import * as path from 'path';
 import { shell } from "../lib/utils";
+import utils = require('../lib/utils');
 import { launcher } from "../project/index";
 import { tmpdir } from "os";
 import * as FileUtil from '../lib/FileUtil';
@@ -85,8 +86,8 @@ export class TextureMergerPlugin implements Plugin {
             }
             catch (e) {
                 if (e.code) {
-                    console.error(`TextureMerger 执行错误，错误码：${e.code}`);
-                    console.error(`执行命令:${e.path} ${e.args.join(" ")}`)
+                    console.error(utils.tr(1423, e.code));
+                    console.error(utils.tr(1424, e.path, e.args.join(" ")));
                 }
                 else {
                     console.error(e);
@@ -106,7 +107,7 @@ export class TextureMergerPlugin implements Plugin {
         }
         else {
             tmp["options"]["useExtension"] = 1;
-            console.log(url+"所对应的textureMerger项目没有设置后缀名，已自动添加，请检查代码");
+            console.log(utils.tr(1425, url));
         }
         await FileUtil.writeFileAsync(url, JSON.stringify(tmp), 'utf-8')
     }
@@ -121,11 +122,11 @@ function getTextureMergerPath() {
         return m.name == "Texture Merger";
     })[0];
     if (!tm) {
-        throw '请安装 Texture Merger'; //i18n
+        throw utils.tr(1426);
     }
     const isUpperVersion = globals.compressVersion(tm.version, "1.7.0");
     if (isUpperVersion < 0) {
-        throw '请将 Texture Merger 升级至 1.7.0 以上版本';
+        throw utils.tr(1427);
     }
     switch (process.platform) {
         case 'darwin':
@@ -135,5 +136,5 @@ function getTextureMergerPath() {
             return tm.path + "/TextureMerger.exe";
             break;
     }
-    throw '不支持的平台'
+    throw utils.tr(1428);
 }

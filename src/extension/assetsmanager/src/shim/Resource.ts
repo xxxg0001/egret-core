@@ -77,6 +77,7 @@ module RES {
         if (resourceRoot.indexOf('://') >= 0) {
             const temp = resourceRoot.split('://');
             resourceRoot = temp[0] + '://' + path.normalize(temp[1] + '/');
+            url = url.replace(resourceRoot, '');
         }
         else {
             resourceRoot = path.normalize(resourceRoot + "/");
@@ -316,7 +317,7 @@ module RES {
      * @platform Web,Native
      * @language zh_CN
      */
-    export function destroyRes(name: string, force?: boolean): Promise<boolean> {
+    export function destroyRes(name: string, force?: boolean): boolean {
         return instance.destroyRes(name, force);
     }
     /**
@@ -449,26 +450,91 @@ module RES {
         instance.addResourceData(data);
     }
 
+    /**
+        * Returns the VersionController
+        * @version Egret 2.5
+        * @platform Web,Native
+        * @language en_US
+        */
+    /**
+     * 获得版本控制器.
+     * @version Egret 2.5
+     * @platform Web,Native
+     * @language zh_CN
+     */
+    export function getVersionController(): VersionController {
+        if (!instance) instance = new Resource();
+        return instance.vcs;
+    }
+
+    /**
+         * Register the VersionController
+         * @param vcs The VersionController to register.
+         * @version Egret 2.5
+         * @platform Web,Native
+         * @language en_US
+         */
+    /**
+     * 注册版本控制器,通过RES模块加载资源时会从版本控制器获取真实url
+     * @param vcs 注入的版本控制器。
+     * @version Egret 2.5
+     * @platform Web,Native
+     * @language zh_CN
+     */
+    export function registerVersionController(vcs: VersionController): void {
+        if (!instance) instance = new Resource();
+        instance.registerVersionController(vcs);
+    }
+    export function getVirtualUrl(url) {
+        if (instance.vcs) {
+            return instance.vcs.getVirtualUrl(url);
+        }
+        else {
+            return url;
+        }
+    }
 
     /**
      * @private
      */
     export class Resource extends egret.EventDispatcher {
+        vcs: VersionController;
+        isVcsInit = false;
+        constructor() {
+            super();
+            if (VersionController) {
+                this.vcs = new VersionController();
+            }
 
+        }
+        public registerVersionController(vcs: VersionController) {
+            this.vcs = vcs;
+            this.isVcsInit = false;
+        }
         /**
          * 开始加载配置
          * @method RES.loadConfig
          */
         @checkCancelation
         loadConfig(): Promise<void> {
-            native_init();
-            return config.init().then(data => {
-                ResourceEvent.dispatchResourceEvent(this, ResourceEvent.CONFIG_COMPLETE);
-            }, error => {
-                ResourceEvent.dispatchResourceEvent(this, ResourceEvent.CONFIG_LOAD_ERROR);
-                return Promise.reject(error);
-            })
+            let normalCall = () => {
+                return config.init().then(data => {
+                    ResourceEvent.dispatchResourceEvent(this, ResourceEvent.CONFIG_COMPLETE);
+                }, error => {
+                    ResourceEvent.dispatchResourceEvent(this, ResourceEvent.CONFIG_LOAD_ERROR);
+                    return Promise.reject(error);
+                })
+            }
+            if (!this.isVcsInit && this.vcs) {
+                this.isVcsInit = true;
+                return this.vcs.init().then(() => {
+                    return normalCall()
+                });
+            } else {
+                return normalCall()
+            }
         }
+
 
         /**
          * 检查某个资源组是否已经加载完成
@@ -497,22 +563,31 @@ module RES {
         loadGroup(name: string, priority: number = 0, reporter?: PromiseTaskReporter): Promise<any> {
 
             let reporterDelegate = {
-                onProgress: (current, total) => {
+                onProgress: (current, total, resItem) => {
                     if (reporter && reporter.onProgress) {
-                        reporter.onProgress(current, total);
+                        reporter.onProgress(current, total, resItem);
                     }
-                    ResourceEvent.dispatchResourceEvent(this, ResourceEvent.GROUP_PROGRESS, name, undefined, current, total);
+                    ResourceEvent.dispatchResourceEvent(this, ResourceEvent.GROUP_PROGRESS, name, resItem, current, total);
                 }
             }
             return this._loadGroup(name, priority, reporterDelegate).then(data => {
+                if (config.config.loadGroup.indexOf(name) == -1) {
+                    config.config.loadGroup.push(name);
+                }
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.GROUP_COMPLETE, name);
+
             }, error => {
-                const itemList: ResourceInfo[] = error.itemList;
-                const length = itemList.length;
-                for (let i = 0; i < length; i++) {
-                    const item = itemList[i];
-                    delete item.promise;
-                    ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, name, item);
+                if (config.config.loadGroup.indexOf(name) == -1) {
+                    config.config.loadGroup.push(name);
+                }
+                if (error.itemList) {
+                    const itemList: ResourceInfo[] = error.itemList;
+                    const length = itemList.length;
+                    for (let i = 0; i < length; i++) {
+                        const item = itemList[i];
+                        delete item.promise;
+                        ResourceEvent.dispatchResourceEvent(this, ResourceEvent.ITEM_LOAD_ERROR, name, item);
+                    }
                 }
                 ResourceEvent.dispatchResourceEvent(this, ResourceEvent.GROUP_LOAD_ERROR, name);
                 return Promise.reject(error.error);
@@ -521,7 +596,13 @@ module RES {
 
         @checkCancelation
         private _loadGroup(name: string, priority: number = 0, reporter?: PromiseTaskReporter): Promise<any> {
+
             let resources = config.getGroupByName(name, true);
+            if (resources.length == 0) {
+                return new Promise((reslove, reject) => {
+                    reject({ error: new ResourceManagerError(2006, name) });
+                })
+            }
             return queue.load(resources, name, priority, reporter);
         }
 
@@ -671,31 +752,49 @@ module RES {
          * @param force {boolean} 销毁一个资源组时其他资源组有同样资源情况资源是否会被删除，默认值true
          * @returns {boolean}
          */
-        async destroyRes(name: string, force: boolean = true) {
+        destroyRes(name: string, force: boolean = true) {
             var group = config.getGroup(name);
-            let remove = (r: ResourceInfo) => {
-                return queue.unloadResource(r);
-            }
-
             if (group && group.length > 0) {
-                for (let item of group) {
-                    await remove(item);
+                if (force || (config.config.loadGroup.length == 1 && config.config.loadGroup[0] == name)) {
+                    for (let item of group) {
+                        queue.unloadResource(item)
+                    }
+                    let index = config.config.loadGroup.indexOf(name);
+                    config.config.loadGroup.splice(index, 1);
+                } else {
+                    let removeItemHash = {};
+                    for (let groupName of config.config.loadGroup) {
+                        for (let key in config.config.groups[groupName]) {
+                            const tmpname = config.config.groups[groupName][key];
+                            if (removeItemHash[tmpname]) {
+                                removeItemHash[tmpname]++;
+                            } else {
+                                removeItemHash[tmpname] = 1;
+                            }
+                        }
+                    }
+                    for (let tmpname in removeItemHash) {
+                        if (removeItemHash[tmpname] && removeItemHash[tmpname] == 1) {
+                            let item = config.getResource(tmpname);
+                            if (item) {
+                                queue.unloadResource(item)
+                            }
+                        }
+                    }
+                    let index = config.config.loadGroup.indexOf(name);
+                    config.config.loadGroup.splice(index, 1);
                 }
                 return true;
             }
             else {
                 let item = config.getResource(name);
                 if (item) {
-                    await remove(item);
-                    return true;
+                    return queue.unloadResource(item);
                 }
                 else {
                     console.warn(`无法删除指定组:${name}`);
                     return false;
                 }
-
-
-
             }
         }
 
@@ -728,7 +827,6 @@ module RES {
      * Resource单例
      */
     var instance: Resource;
-
 
 }
 

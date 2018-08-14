@@ -3493,7 +3493,11 @@ var egret;
          * @language zh_CN
          */
         Event.create = function (EventClass, type, bubbles, cancelable) {
-            var eventPool = EventClass.eventPool;
+            var eventPool;
+            var hasEventPool = EventClass.hasOwnProperty("eventPool");
+            if (hasEventPool) {
+                eventPool = EventClass.eventPool;
+            }
             if (!eventPool) {
                 eventPool = EventClass.eventPool = [];
             }
@@ -5689,12 +5693,26 @@ var egret;
             configurable: true
         });
         Bitmap.prototype.$setFillMode = function (value) {
-            if (value == this.$fillMode) {
+            var self = this;
+            if (value == self.$fillMode) {
                 return false;
             }
-            this.$fillMode = value;
+            self.$fillMode = value;
             if (egret.nativeRender) {
-                this.$nativeDisplayObject.setBitmapFillMode(this.$fillMode);
+                self.$nativeDisplayObject.setBitmapFillMode(self.$fillMode);
+            }
+            else {
+                self.$renderDirty = true;
+                var p = self.$parent;
+                if (p && !p.$cacheDirty) {
+                    p.$cacheDirty = true;
+                    p.$cacheDirtyUp();
+                }
+                var maskedObject = self.$maskedObject;
+                if (maskedObject && !maskedObject.$cacheDirty) {
+                    maskedObject.$cacheDirty = true;
+                    maskedObject.$cacheDirtyUp();
+                }
             }
             return true;
         };
@@ -15912,6 +15930,9 @@ var egret;
             var displayBoundsY = displayBounds.y;
             var displayBoundsWidth = displayBounds.width;
             var displayBoundsHeight = displayBounds.height;
+            if (displayBoundsWidth <= 0 || displayBoundsHeight <= 0) {
+                return drawCalls;
+            }
             var displayBuffer = this.createRenderBuffer(displayBoundsWidth, displayBoundsHeight);
             var displayContext = displayBuffer.context;
             if (!displayContext) {
@@ -17050,7 +17071,7 @@ var egret;
          * @platform Web,Native
          * @language zh_CN
          */
-        Capabilities.engineVersion = "5.2.6";
+        Capabilities.engineVersion = "5.2.7";
         /***
          * current render mode.
          * @type {string}
@@ -18019,7 +18040,7 @@ var egret;
             var textLines = this.$getTextLines();
             var length = textLines.length;
             if (length == 0) {
-                if (egret.nativeRender) {
+                if (egret.nativeRender && self.$font) {
                     self.$nativeDisplayObject.setDataToBitmapNode(self.$nativeDisplayObject.id, self.$font.$texture, []);
                     self.$nativeDisplayObject.setWidth(0);
                     self.$nativeDisplayObject.setHeight(0);
