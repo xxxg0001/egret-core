@@ -138,7 +138,7 @@ export type ConvertResourceConfigPluginOption = {
 
     nameSelector: (url: string) => string
 
-
+    TM_Verbose: boolean;
 }
 
 type R = { url: string, type: string, subkeys: string[] | string, name: string };
@@ -305,6 +305,7 @@ class TextureMergerResConfigPlugin {
                 subkeys: subkeys,
                 url: this.getSpliceRoot(relativeJson, root)
             }
+            this.checkVerbose(json.url, filename);
             this.deleteReferenceByName(subkeysFile.name, resourceConfig, root);
             resourceConfig.resources.push(json);
 
@@ -351,6 +352,22 @@ class TextureMergerResConfigPlugin {
                 continue;
             }
         }
+    }
+    /**
+     * 检查是否一个json插入到不同的res.json中
+     * @param url 
+     */
+    private verboseHash: { [filename: string]: string[] } = {};
+    private checkVerbose(tmjson: string, resjson: string) {
+        if (!this.options.TM_Verbose) return;
+        if (this.verboseHash[tmjson] == undefined) {
+            this.verboseHash[tmjson] = [];
+            this.verboseHash[tmjson].push(resjson)
+            return;
+        }
+        this.verboseHash[tmjson].push(resjson)
+        // console.log(this.verboseHash[tmjson].join(",    "));
+        console.log(utils.tr(1429, this.verboseHash[tmjson].join(",    ")));
     }
 }
 
@@ -533,7 +550,7 @@ namespace vfs {
             if (!this.exists(folder)) {
                 this.mkdir(folder);
             }
-            let d = this.reslove(folder) as (Dictionary | null);
+            let d = this.resolve(folder) as (Dictionary | null);
             if (d) {
                 d[basefilename] = { url, type, name, ...r };
             }
@@ -541,7 +558,7 @@ namespace vfs {
 
         getFile(filename: string): File | undefined {
             filename = this.normalize(filename);
-            return this.reslove(filename) as File;
+            return this.resolve(filename) as File;
         }
 
         private basename(filename: string) {
@@ -556,7 +573,7 @@ namespace vfs {
             return path.substr(0, path.lastIndexOf("/"));
         }
 
-        private reslove(dirpath: string) {
+        private resolve(dirpath: string) {
             if (dirpath == "") {
                 return this.root;
             }

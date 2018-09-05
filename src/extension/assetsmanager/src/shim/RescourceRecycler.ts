@@ -149,7 +149,7 @@ module RES {
             if (info.dispatcher) {
                 loadingCount ++
                 const { key, r, subkey } = config.getResourceWithSubkey(info.url, true);
-                queue.loadResource(r).then(value => {
+                queue.pushResItem(r).then(value => {
                     host.save(r, value);
                     loadingCount--
                     const dispathcher = <egret.EventDispatcher>lazyLoadMap[key].dispatcher

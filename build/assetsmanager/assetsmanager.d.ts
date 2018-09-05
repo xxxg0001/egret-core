@@ -1,206 +1,3 @@
-declare module RES {
-    /**
-     * @class RES.ResourceLoader
-     * @classdesc
-     * @private
-     */
-    class ResourceLoader {
-        /**
-         * 当前组加载的项总个数,key为groupName
-         */
-        private groupTotalDic;
-        /**
-         * 已经加载的项个数,key为groupName
-         */
-        private numLoadedDic;
-        /**
-         * 加载失败的组,key为groupName
-         */
-        private groupErrorDic;
-        private retryTimesDic;
-        maxRetryTimes: number;
-        private reporterDic;
-        private dispatcherDic;
-        private failedList;
-        private loadItemErrorDic;
-        private errorDic;
-        /**
-         * 资源优先级队列，key为资源，value为优先级
-         */
-        private itemListPriorityDic;
-        /**
-         * 资源是否在加载
-         */
-        private itemLoadDic;
-        private promiseHash;
-        private findPriorityInDic(item);
-        private updatelistPriority(list, priority);
-        load(list: ResourceInfo[], groupName: string, priority: number, reporter?: PromiseTaskReporter): Promise<any>;
-        private loadingCount;
-        thread: number;
-        private next();
-        /**
-         * 获取下一个待加载项
-         */
-        private getOneResourceInfo();
-        loadResource(r: ResourceInfo, p?: RES.processor.Processor): Promise<any>;
-        unloadResource(r: ResourceInfo): boolean;
-    }
-}
-declare type ResourceRootSelector<T extends string> = () => T;
-declare type ResourceTypeSelector = (file: string) => string;
-declare type ResourceNameSelector = (file: string) => string;
-declare type ResourceMergerSelector = (file: string) => {
-    path: string;
-    alias: string;
-};
-declare module RES {
-    var resourceTypeSelector: ResourceTypeSelector;
-    var resourceNameSelector: ResourceNameSelector;
-    var resourceMergerSelector: ResourceMergerSelector | null;
-    function getResourceInfo(path: string): File | null;
-    function setConfigURL(url: string, root: string): void;
-    interface ResourceInfo {
-        url: string;
-        type: string;
-        root: string;
-        crc32?: string;
-        size?: number;
-        extra?: 1 | undefined;
-        name: string;
-        soundType?: string;
-        scale9grid?: string;
-        groupNames?: string[];
-        promise?: Promise<any>;
-    }
-    interface Data {
-        resourceRoot: string;
-        typeSelector: ResourceTypeSelector;
-        mergeSelector: ResourceMergerSelector | null;
-        fileSystem: FileSystem;
-        groups: {
-            [groupName: string]: string[];
-        };
-        alias: {
-            [aliasName: string]: string;
-        };
-        loadGroup: string[];
-    }
-    /**
-     * @class RES.ResourceConfig
-     * @classdesc
-     * @private
-     */
-    class ResourceConfig {
-        config: Data;
-        constructor();
-        init(): Promise<void>;
-        __temp__get__type__via__url(url_or_alias: string): string;
-        getKeyByAlias(aliasName: string): string;
-        /**
-         * 创建自定义的加载资源组,注意：此方法仅在资源配置文件加载完成后执行才有效。
-         * 可以监听ResourceEvent.CONFIG_COMPLETE事件来确认配置加载完成。
-         * @method RES.ResourceConfig#createGroup
-         * @param name {string} 要创建的加载资源组的组名
-         * @param keys {egret.Array<string>} 要包含的键名列表，key对应配置文件里的name属性或sbuKeys属性的一项或一个资源组名。
-         * @param override {boolean} 是否覆盖已经存在的同名资源组,默认false。
-         * @returns {boolean}
-         */
-        createGroup(name: string, keys: Array<string>, override?: boolean): boolean;
-        /**
-         * 添加一个二级键名到配置列表。
-         * @method RES.ResourceConfig#addSubkey
-         * @param subkey {string} 要添加的二级键名
-         * @param name {string} 二级键名所属的资源name属性
-         */
-        addSubkey(subkey: string, name: string): void;
-        addAlias(alias: any, key: any): void;
-        /**
-         * 获取加载项类型。
-         * @method RES.ResourceConfig#getType
-         * @param key {string} 对应配置文件里的name属性或sbuKeys属性的一项。
-         * @returns {string}
-         */
-        getType(key: string): string;
-        addResourceData(data: {
-            name: string;
-            type?: string;
-            url: string;
-            root?: string;
-            extra?: 1 | undefined;
-        }): void;
-        removeResourceData(data: {
-            name: string;
-            type?: string;
-            url: string;
-            root?: string;
-            extra?: 1 | undefined;
-        }): void;
-        destory(): void;
-    }
-}
-declare module RES {
-    const enum HostState {
-        none = 0,
-        loading = 1,
-        saved = 2,
-        destroying = 3,
-    }
-    /**
-     * 整个资源加载系统的进程id，协助管理回调派发机制
-     */
-    var systemPid: number;
-    let checkCancelation: MethodDecorator;
-    function profile(): void;
-    var host: ProcessHost;
-    var config: ResourceConfig;
-    var queue: ResourceLoader;
-    interface ProcessHost {
-        state: {
-            [index: string]: HostState;
-        };
-        resourceConfig: ResourceConfig;
-        load: (resource: ResourceInfo, processor?: string | processor.Processor) => Promise<any>;
-        unload: (resource: ResourceInfo) => void;
-        save: (rexource: ResourceInfo, data: any) => void;
-        get: (resource: ResourceInfo) => any;
-        remove: (resource: ResourceInfo) => void;
-    }
-    class ResourceManagerError extends Error {
-        static errorMessage: {
-            1001: string;
-            1002: string;
-            1005: string;
-            2001: string;
-            2002: string;
-            2003: string;
-            2004: string;
-            2005: string;
-            2006: string;
-        };
-        /**
-         * why instanceof e  != ResourceManagerError ???
-         * see link : https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-         */
-        private __resource_manager_error__;
-        constructor(code: number, replacer?: Object, replacer2?: Object);
-    }
-}
-declare namespace RES {
-    /**
-     * Promise的回调函数集合
-     */
-    interface PromiseTaskReporter {
-        /**
-         * 进度回调
-         */
-        onProgress?: (current: number, total: number, resItem: ResourceInfo | undefined) => void;
-        /**
-         * 取消回调
-         */
-        onCancel?: () => void;
-    }
-}
 declare namespace RES {
     /**
      * Version control loading interface
@@ -231,7 +28,7 @@ declare namespace RES {
          * @platform Web,Native
          * @language zh_CN
          */
-        init(): Promise<void>;
+        init(): Promise<any>;
         /**
          * Get the actual URL of the resource file.<br/>
          * Because this method needs to be called to control the actual version of the URL have the original resource files were changed, so would like to get the specified resource file the actual URL.<br/>
@@ -290,6 +87,199 @@ declare namespace RES {
         new (): VersionController;
     };
 }
+declare type ResourceRootSelector<T extends string> = () => T;
+declare type ResourceTypeSelector = (file: string) => string;
+declare type ResourceNameSelector = (file: string) => string;
+declare type ResourceMergerSelector = (file: string) => {
+    path: string;
+    alias: string;
+};
+declare module RES {
+    var resourceTypeSelector: ResourceTypeSelector;
+    var resourceNameSelector: ResourceNameSelector;
+    var resourceMergerSelector: ResourceMergerSelector | null;
+    function getResourceInfo(path: string): File | null;
+    function setConfigURL(url: string, root: string): void;
+    interface ResourceInfo {
+        url: string;
+        type: string;
+        root: string;
+        crc32?: string;
+        size?: number;
+        extra?: 1 | undefined;
+        name: string;
+        soundType?: string;
+        scale9grid?: string;
+        groupNames?: string[];
+        promise?: Promise<any>;
+    }
+    interface Data {
+        resourceRoot: string;
+        typeSelector: ResourceTypeSelector;
+        mergeSelector: ResourceMergerSelector | null;
+        fileSystem: FileSystem;
+        groups: {
+            [groupName: string]: string[];
+        };
+        alias: {
+            [aliasName: string]: string;
+        };
+        loadGroup: string[];
+    }
+    /**
+     * @class RES.ResourceConfig
+     * @classdesc
+     * @private
+     */
+    class ResourceConfig {
+        config: Data;
+        constructor();
+        init(): Promise<any>;
+        __temp__get__type__via__url(url_or_alias: string): string;
+        getKeyByAlias(aliasName: string): string;
+        /**
+         * 创建自定义的加载资源组,注意：此方法仅在资源配置文件加载完成后执行才有效。
+         * 可以监听ResourceEvent.CONFIG_COMPLETE事件来确认配置加载完成。
+         * @method RES.ResourceConfig#createGroup
+         * @param name {string} 要创建的加载资源组的组名
+         * @param keys {egret.Array<string>} 要包含的键名列表，key对应配置文件里的name属性或sbuKeys属性的一项或一个资源组名。
+         * @param override {boolean} 是否覆盖已经存在的同名资源组,默认false。
+         * @returns {boolean}
+         */
+        createGroup(name: string, keys: Array<string>, override?: boolean): boolean;
+        /**
+         * 添加一个二级键名到配置列表。
+         * @method RES.ResourceConfig#addSubkey
+         * @param subkey {string} 要添加的二级键名
+         * @param name {string} 二级键名所属的资源name属性
+         */
+        addSubkey(subkey: string, name: string): void;
+        addAlias(alias: any, key: any): void;
+        /**
+         * 获取加载项类型。
+         * @method RES.ResourceConfig#getType
+         * @param key {string} 对应配置文件里的name属性或sbuKeys属性的一项。
+         * @returns {string}
+         */
+        getType(key: string): string;
+        addResourceData(data: {
+            name: string;
+            type?: string;
+            url: string;
+            root?: string;
+            extra?: 1 | undefined;
+        }): void;
+        removeResourceData(data: {
+            name: string;
+            type?: string;
+            url: string;
+            root?: string;
+            extra?: 1 | undefined;
+        }): void;
+    }
+}
+declare module RES {
+    /**
+     * @class RES.ResourceLoader
+     * @classdesc
+     * @private
+     */
+    class ResourceLoader {
+        /**
+         * 当前组加载的项总个数,key为groupName
+         */
+        private groupTotalDic;
+        /**
+         * 已经加载的项个数,key为groupName
+         */
+        private numLoadedDic;
+        /**
+         * 加载失败的组,key为groupName
+         */
+        private groupErrorDic;
+        private retryTimesDic;
+        maxRetryTimes: number;
+        private reporterDic;
+        private dispatcherDic;
+        private failedList;
+        private loadItemErrorDic;
+        private errorDic;
+        /**
+         * 资源优先级队列，key为资源，value为优先级
+         */
+        private itemListPriorityDic;
+        /**
+         * 资源是否在加载
+         */
+        private itemLoadDic;
+        private promiseHash;
+        /**
+         * 延迟加载队列,getResByUrl ,getResAsync等方法存储队列
+         */
+        private lazyLoadList;
+        pushResItem(resInfo: ResourceInfo): Promise<any>;
+        /**
+         * 加载队列,存储组的队列
+         */
+        pushResGroup(list: ResourceInfo[], groupName: string, priority: number, reporter?: PromiseTaskReporter): Promise<any>;
+        /**
+         * 更新组的优先级顺序
+         * @param list 存储数据的队列
+         * @param priority 优先级
+         */
+        private updatelistPriority(list, priority);
+        /**
+         * 搜索单项资源的优先级
+         * @param item 单项资源
+         */
+        private findPriorityInDic(item);
+        private loadingCount;
+        /**
+         * 最大线程数目
+         */
+        thread: number;
+        /**
+         * 加载下一项资源，线程控制
+         */
+        private loadNextResource();
+        /**
+         * 加载单向资源
+         */
+        private loadSingleResource();
+        /**
+         * 获取下一个待加载项
+         */
+        private getOneResourceInfoInGroup();
+        /**
+         * 设置组的加载进度，同时返回当前组是否加载完成
+         * @param groupName 组名
+         * @param r 加载完成的资源
+         */
+        private setGroupProgress(groupName, r);
+        /**
+         * 加载组的最后一项，同时派发事件
+         * @param groupName 组名
+         * @param lastError 最后一项是否成功，此项为错误信息
+         */
+        private loadGroupEnd(groupName, lastError?);
+        /**
+         * 删除组的事件派发器，Promise的缓存，返回事件派发器
+         * @param groupName 组名
+         */
+        private deleteDispatcher(groupName);
+        /**
+         * 加载资源
+         * @param r 资源信息
+         * @param p 加载处理器
+         */
+        private loadResource(r, p?);
+        /**
+         * 释放资源
+         * @param r 资源信息
+         */
+        unloadResource(r: ResourceInfo): boolean;
+    }
+}
 declare module RES {
     let checkNull: MethodDecorator;
     /**
@@ -304,32 +294,51 @@ declare module RES {
     }
 }
 declare module RES {
-    interface File {
+    let cacheDuration: number;
+    class Loader {
+        url?: string;
+        dispatcher?: egret.EventDispatcher;
+        handle?: (data: any) => void;
+        retry: number;
+        get(url: string, handle: (data: any) => void, priority?: number): void;
+        private onEvent(e);
+        private onError();
+        release(): void;
+    }
+    class LoadItem {
+        dispatcher?: egret.EventDispatcher;
         url: string;
-        type: string;
-        name: string;
-        root: string;
+        priority: number;
+        time: number;
+        constructor(url: string, priority: number);
     }
-    interface Dictionary {
-        [file: string]: File | Dictionary;
+    let lazyLoadMap: {
+        [key: string]: LoadItem;
+    };
+    let lazyLoadList: LoadItem[];
+    function asyncLoad(url: string, handle: (data: any) => void, priority?: number): void;
+    function changePriority(url: string, priority?: number): void;
+    function getDispatcher(url: string, priority?: number): egret.EventDispatcher;
+    let loadingCount: number;
+    let maxThread: number;
+    let maxRetry: number;
+    let using: {
+        [key: string]: number;
+    };
+    let recycles: {
+        [key: string]: number;
+    };
+    function addRel(url: string): void;
+    function delRel(url: string, duration?: number): void;
+    function startRecycleTimer(interval: number): void;
+    function forceRecycle(n: number): void;
+}
+declare namespace RES {
+    namespace path {
+        const normalize: (filename: string) => string;
+        const basename: (filename: string) => string;
+        const dirname: (path: string) => string;
     }
-    interface FileSystem {
-        addFile(filename: string, type?: string, root?: string, extra?: 1 | undefined): any;
-        getFile(filename: string): File | null;
-        profile(): void;
-        removeFile(filename: string): any;
-    }
-    class NewFileSystem {
-        private data;
-        constructor(data: Dictionary);
-        profile(): void;
-        addFile(filename: string, type?: string): void;
-        getFile(filename: string): File | null;
-        private reslove(dirpath);
-        private mkdir(dirpath);
-        private exists(dirpath);
-    }
-    var fileSystem: FileSystem;
 }
 declare namespace RES {
     /**
@@ -712,11 +721,31 @@ declare module RES {
         soundType?: string;
     }
 }
-declare namespace RES {
-    namespace path {
-        const normalize: (filename: string) => string;
-        const basename: (filename: string) => string;
-        const dirname: (path: string) => string;
+declare module RES {
+    interface File {
+        url: string;
+        type: string;
+        name: string;
+        root: string;
+    }
+    interface Dictionary {
+        [file: string]: File | Dictionary;
+    }
+    interface FileSystem {
+        addFile(filename: string, type?: string, root?: string, extra?: 1 | undefined): any;
+        getFile(filename: string): File | null;
+        profile(): void;
+        removeFile(filename: string): any;
+    }
+    class NewFileSystem {
+        private data;
+        constructor(data: Dictionary);
+        profile(): void;
+        addFile(filename: string, type?: string): void;
+        getFile(filename: string): File | null;
+        private resolve(dirpath);
+        private mkdir(dirpath);
+        private exists(dirpath);
     }
 }
 declare module RES {
@@ -1138,7 +1167,6 @@ declare module RES {
          */
         loadGroup(name: string, priority?: number, reporter?: PromiseTaskReporter): Promise<any>;
         private _loadGroup(name, priority?, reporter?);
-        loadResources(keys: string[], reporter?: PromiseTaskReporter): Promise<any>;
         /**
          * 创建自定义的加载资源组,注意：此方法仅在资源配置文件加载完成后执行才有效。
          * 可以监听ResourceEvent.CONFIG_COMPLETE事件来确认配置加载完成。
@@ -1191,7 +1219,7 @@ declare module RES {
          */
         destroyRes(name: string, force?: boolean): boolean;
         /**
-         * 设置最大并发加载线程数量，默认值是2.
+         * 设置最大并发加载线程数量，默认值是4.
          * @method RES.setMaxLoadingThread
          * @param thread {number} 要设置的并发加载数。
          */
@@ -1209,42 +1237,59 @@ declare module RES {
     }
 }
 declare module RES {
-    let cacheDuration: number;
-    class Loader {
-        url?: string;
-        dispatcher?: egret.EventDispatcher;
-        handle?: (data: any) => void;
-        retry: number;
-        get(url: string, handle: (data: any) => void, priority?: number): void;
-        private onEvent(e);
-        private onError();
-        release(): void;
+    const enum HostState {
+        none = 0,
+        loading = 1,
+        saved = 2,
+        destroying = 3,
     }
-    class LoadItem {
-        dispatcher?: egret.EventDispatcher;
-        url: string;
-        priority: number;
-        time: number;
-        constructor(url: string, priority: number);
+    function profile(): void;
+    var host: ProcessHost;
+    var config: ResourceConfig;
+    var queue: ResourceLoader;
+    interface ProcessHost {
+        state: {
+            [index: string]: HostState;
+        };
+        resourceConfig: ResourceConfig;
+        load: (resource: ResourceInfo, processor?: string | processor.Processor) => Promise<any>;
+        unload: (resource: ResourceInfo) => void;
+        save: (rexource: ResourceInfo, data: any) => void;
+        get: (resource: ResourceInfo) => any;
+        remove: (resource: ResourceInfo) => void;
     }
-    let lazyLoadMap: {
-        [key: string]: LoadItem;
-    };
-    let lazyLoadList: LoadItem[];
-    function asyncLoad(url: string, handle: (data: any) => void, priority?: number): void;
-    function changePriority(url: string, priority?: number): void;
-    function getDispatcher(url: string, priority?: number): egret.EventDispatcher;
-    let loadingCount: number;
-    let maxThread: number;
-    let maxRetry: number;
-    let using: {
-        [key: string]: number;
-    };
-    let recycles: {
-        [key: string]: number;
-    };
-    function addRel(url: string): void;
-    function delRel(url: string, duration?: number): void;
-    function startRecycleTimer(interval: number): void;
-    function forceRecycle(n: number): void;
+    class ResourceManagerError extends Error {
+        static errorMessage: {
+            1001: string;
+            1002: string;
+            1005: string;
+            2001: string;
+            2002: string;
+            2003: string;
+            2004: string;
+            2005: string;
+            2006: string;
+        };
+        /**
+         * why instanceof e  != ResourceManagerError ???
+         * see link : https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
+         */
+        private __resource_manager_error__;
+        constructor(code: number, replacer?: Object, replacer2?: Object);
+    }
+}
+declare namespace RES {
+    /**
+     * Promise的回调函数集合
+     */
+    interface PromiseTaskReporter {
+        /**
+         * 进度回调
+         */
+        onProgress?: (current: number, total: number, resItem: ResourceInfo | undefined) => void;
+        /**
+         * 取消回调
+         */
+        onCancel?: () => void;
+    }
 }

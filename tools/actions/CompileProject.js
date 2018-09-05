@@ -14,7 +14,7 @@ var CompileProject = /** @class */ (function () {
     };
     CompileProject.prototype.compileProject = function (args, files) {
         //console.log("----compileProject.compileProject----")
-        if (files && this.compilerHost) {
+        if (files && this.compilerHost) { // console.log("----compileProject.compileProject.B-----")
             // files.forEach(f => f.fileName = f.fileName.replace(args.projectDir, ""));
             // var realCWD = process.cwd();
             // process.chdir(args.projectDir);
@@ -25,7 +25,7 @@ var CompileProject = /** @class */ (function () {
             this.compilerHost = this.compilerHost.compileWithChanges(files, sourceMap);
             // process.chdir(realCWD);
         }
-        else {
+        else { //console.log("----compileProject.compileProject.A-----")
             var compiler = new Compiler.Compiler();
             var configParsedResult = compiler.parseTsconfig(egret.args.projectDir, egret.args.publish);
             this.compilerOptions = configParsedResult.options;

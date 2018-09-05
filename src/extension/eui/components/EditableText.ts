@@ -171,7 +171,7 @@ namespace eui {
          *
          */
         public $onRemoveFromStage(notifyListeners: boolean): void {
-            sys.UIComponentImpl.prototype["$onRemoveFromStage"].call(this, notifyListeners);
+            super.$onRemoveFromStage(notifyListeners);
             this.removeEventListener(egret.FocusEvent.FOCUS_IN, this.onfocusIn, this);
             this.removeEventListener(egret.FocusEvent.FOCUS_OUT, this.onfocusOut, this);
         }

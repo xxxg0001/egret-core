@@ -44,293 +44,15 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 //////////////////////////////////////////////////////////////////////////////////////
 var RES;
 (function (RES) {
-    /**
-     * @class RES.ResourceLoader
-     * @classdesc
-     * @private
-     */
-    var ResourceLoader = (function () {
-        function ResourceLoader() {
-            /**
-             * 当前组加载的项总个数,key为groupName
-             */
-            this.groupTotalDic = {};
-            /**
-             * 已经加载的项个数,key为groupName
-             */
-            this.numLoadedDic = {};
-            /**
-             * 加载失败的组,key为groupName
-             */
-            this.groupErrorDic = {};
-            this.retryTimesDic = {};
-            this.maxRetryTimes = 3;
-            this.reporterDic = {};
-            this.dispatcherDic = {};
-            this.failedList = new Array();
-            this.loadItemErrorDic = {};
-            this.errorDic = {};
-            /**
-             * 资源优先级队列，key为资源，value为优先级
-             */
-            this.itemListPriorityDic = {};
-            /**
-             * 资源是否在加载
-             */
-            this.itemLoadDic = {};
-            this.promiseHash = {};
-            this.loadingCount = 0;
-            this.thread = 4;
-        }
-        ResourceLoader.prototype.findPriorityInDic = function (item) {
-            for (var priority in this.itemListPriorityDic) {
-                if (this.itemListPriorityDic[priority].indexOf(item) > -1)
-                    return parseInt(priority);
-            }
-            return undefined;
-        };
-        ResourceLoader.prototype.updatelistPriority = function (list, priority) {
-            if (this.itemListPriorityDic[priority] == undefined) {
-                this.itemListPriorityDic[priority] = [];
-            }
-            for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
-                var item = list_1[_i];
-                if (this.itemLoadDic[item.name] == 1) {
-                    continue;
-                }
-                var oldPriority = this.findPriorityInDic(item);
-                if (oldPriority == undefined) {
-                    this.itemListPriorityDic[priority].push(item);
-                }
-                else {
-                    if (oldPriority < priority) {
-                        this.itemListPriorityDic[priority].push(item);
-                        var index = this.itemListPriorityDic[oldPriority].indexOf(item);
-                        this.itemListPriorityDic[oldPriority].splice(index, 1);
-                    }
-                }
-            }
-        };
-        ResourceLoader.prototype.load = function (list, groupName, priority, reporter) {
-            if (this.promiseHash[groupName]) {
-                return this.promiseHash[groupName];
-            }
-            var total = list.length;
-            for (var i = 0; i < total; i++) {
-                var resInfo = list[i];
-                if (!resInfo.groupNames) {
-                    resInfo.groupNames = [];
-                }
-                resInfo.groupNames.push(groupName);
-            }
-            this.groupTotalDic[groupName] = list.length;
-            this.numLoadedDic[groupName] = 0;
-            this.updatelistPriority(list, priority);
-            this.reporterDic[groupName] = reporter;
-            var dispatcher = new egret.EventDispatcher();
-            this.dispatcherDic[groupName] = dispatcher;
-            var promise = new Promise(function (reslove, reject) {
-                dispatcher.addEventListener("complete", reslove, null);
-                dispatcher.addEventListener("error", function (e) {
-                    reject(e.data);
-                }, null);
-            });
-            this.promiseHash[groupName] = promise;
-            this.next();
-            return promise;
-        };
-        ResourceLoader.prototype.next = function () {
-            var _this = this;
-            var _loop_1 = function () {
-                var r = this_1.getOneResourceInfo();
-                if (!r)
-                    return "break";
-                this_1.itemLoadDic[r.name] = 1;
-                this_1.loadingCount++;
-                this_1.loadResource(r)
-                    .then(function (response) {
-                    _this.loadingCount--;
-                    delete _this.itemLoadDic[r.name];
-                    RES.host.save(r, response);
-                    var groupNames = [];
-                    for (var _i = 0, _a = r.groupNames; _i < _a.length; _i++) {
-                        var groupName = _a[_i];
-                        groupNames.push(groupName);
-                    }
-                    delete r.groupNames;
-                    for (var _b = 0, groupNames_1 = groupNames; _b < groupNames_1.length; _b++) {
-                        var groupName = groupNames_1[_b];
-                        var reporter = _this.reporterDic[groupName];
-                        _this.numLoadedDic[groupName]++;
-                        var current = _this.numLoadedDic[groupName];
-                        var total = _this.groupTotalDic[groupName];
-                        if (reporter && reporter.onProgress) {
-                            reporter.onProgress(current, total, r);
-                        }
-                        if (current == total) {
-                            var groupError = _this.groupErrorDic[groupName];
-                            delete _this.groupTotalDic[groupName];
-                            delete _this.numLoadedDic[groupName];
-                            delete _this.reporterDic[groupName];
-                            delete _this.groupErrorDic[groupName];
-                            delete _this.promiseHash[groupName];
-                            var dispatcher = _this.dispatcherDic[groupName];
-                            delete _this.dispatcherDic[groupName];
-                            if (groupError) {
-                                var itemList = _this.loadItemErrorDic[groupName];
-                                delete _this.loadItemErrorDic[groupName];
-                                var error = _this.errorDic[groupName];
-                                delete _this.errorDic[groupName];
-                                dispatcher.dispatchEventWith("error", false, { itemList: itemList, error: error });
-                            }
-                            else {
-                                dispatcher.dispatchEventWith("complete");
-                            }
-                        }
-                    }
-                    _this.next();
-                }).catch(function (error) {
-                    if (!error) {
-                        throw r.name + " load fail";
-                    }
-                    if (!error.__resource_manager_error__) {
-                        throw error;
-                    }
-                    delete _this.itemLoadDic[r.name];
-                    _this.loadingCount--;
-                    delete RES.host.state[r.root + r.name];
-                    var times = _this.retryTimesDic[r.name] || 1;
-                    if (times > _this.maxRetryTimes) {
-                        delete _this.retryTimesDic[r.name];
-                        var groupNames = [];
-                        for (var _i = 0, _a = r.groupNames; _i < _a.length; _i++) {
-                            var groupName = _a[_i];
-                            groupNames.push(groupName);
-                        }
-                        delete r.groupNames;
-                        for (var _b = 0, groupNames_2 = groupNames; _b < groupNames_2.length; _b++) {
-                            var groupName = groupNames_2[_b];
-                            if (!_this.loadItemErrorDic[groupName]) {
-                                _this.loadItemErrorDic[groupName] = [];
-                            }
-                            if (_this.loadItemErrorDic[groupName].indexOf(r) == -1) {
-                                _this.loadItemErrorDic[groupName].push(r);
-                            }
-                            _this.groupErrorDic[groupName] = true;
-                            var reporter = _this.reporterDic[groupName];
-                            _this.numLoadedDic[groupName]++;
-                            var current = _this.numLoadedDic[groupName];
-                            var total = _this.groupTotalDic[groupName];
-                            if (reporter && reporter.onProgress) {
-                                reporter.onProgress(current, total, r);
-                            }
-                            if (current == total) {
-                                delete _this.groupTotalDic[groupName];
-                                delete _this.numLoadedDic[groupName];
-                                delete _this.groupErrorDic[groupName];
-                                delete _this.reporterDic[groupName];
-                                delete _this.promiseHash[groupName];
-                                var itemList = _this.loadItemErrorDic[groupName];
-                                delete _this.loadItemErrorDic[groupName];
-                                var dispatcher = _this.dispatcherDic[groupName];
-                                delete _this.dispatcherDic[groupName];
-                                dispatcher.dispatchEventWith("error", false, { itemList: itemList, error: error });
-                            }
-                            else {
-                                _this.errorDic[groupName] = error;
-                            }
-                        }
-                        _this.next();
-                    }
-                    else {
-                        _this.retryTimesDic[r.name] = times + 1;
-                        _this.failedList.push(r);
-                        _this.next();
-                        return;
-                    }
-                });
-            };
-            var this_1 = this;
-            while (this.loadingCount < this.thread) {
-                var state_1 = _loop_1();
-                if (state_1 === "break")
-                    break;
-            }
-        };
-        /**
-         * 获取下一个待加载项
-         */
-        ResourceLoader.prototype.getOneResourceInfo = function () {
-            if (this.failedList.length > 0)
-                return this.failedList.shift();
-            var maxPriority = Number.NEGATIVE_INFINITY;
-            for (var p in this.itemListPriorityDic) {
-                maxPriority = Math.max(maxPriority, p);
-            }
-            var list = this.itemListPriorityDic[maxPriority];
-            if (!list) {
-                return undefined;
-            }
-            if (list.length == 0) {
-                delete this.itemListPriorityDic[maxPriority];
-                return this.getOneResourceInfo();
-            }
-            return list.shift();
-        };
-        ResourceLoader.prototype.loadResource = function (r, p) {
-            if (!p) {
-                if (RES.FEATURE_FLAG.FIX_DUPLICATE_LOAD == 1) {
-                    var s = RES.host.state[r.root + r.name];
-                    if (s == 2) {
-                        return Promise.resolve(RES.host.get(r));
-                    }
-                    if (s == 1) {
-                        return r.promise;
-                    }
-                }
-                p = RES.processor.isSupport(r);
-            }
-            if (!p) {
-                throw new RES.ResourceManagerError(2001, r.name, r.type);
-            }
-            RES.host.state[r.root + r.name] = 1;
-            var promise = p.onLoadStart(RES.host, r);
-            r.promise = promise;
-            return promise;
-        };
-        ResourceLoader.prototype.unloadResource = function (r) {
-            var data = RES.host.get(r);
-            if (!data) {
-                console.warn("尝试释放不存在的资源:", r.name);
-                return false;
-            }
-            var p = RES.processor.isSupport(r);
-            if (p) {
-                // host.state[r.root + r.name] = 3;
-                p.onRemoveStart(RES.host, r);
-                RES.host.remove(r);
-                if (r.extra == 1) {
-                    RES.config.removeResourceData(r);
-                }
-                return true;
-            }
-            else {
-                return true;
-            }
-        };
-        return ResourceLoader;
-    }());
-    RES.ResourceLoader = ResourceLoader;
-    __reflect(ResourceLoader.prototype, "RES.ResourceLoader");
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
     RES.resourceNameSelector = function (p) { return p; };
     function getResourceInfo(path) {
-        var result = RES.fileSystem.getFile(path);
+        var result = RES.config.config.fileSystem.getFile(path);
         if (!result) {
             path = RES.resourceNameSelector(path);
-            result = RES.fileSystem.getFile(path);
+            result = RES.config.config.fileSystem.getFile(path);
         }
         return result;
     }
@@ -356,7 +78,6 @@ var RES;
         function ResourceConfig() {
         }
         ResourceConfig.prototype.init = function () {
-            var _this = this;
             if (!this.config) {
                 this.config = {
                     alias: {}, groups: {}, resourceRoot: configItem.root,
@@ -365,15 +86,13 @@ var RES;
                     loadGroup: []
                 };
             }
-            return RES.queue.loadResource(configItem).catch(function (e) {
+            return RES.queue.pushResItem(configItem).catch(function (e) {
                 if (!e.__resource_manager_error__) {
                     console.error(e.stack);
                     e = new RES.ResourceManagerError(1002);
                 }
                 RES.host.remove(configItem);
                 return Promise.reject(e);
-            }).then(function (data) {
-                return _this.parseConfig(data);
             });
         };
         /**
@@ -532,48 +251,6 @@ var RES;
             // return true;
         };
         /**
-         * 解析一个配置文件
-         * @internal
-         * @method RES.ResourceConfig#parseConfig
-         * @param data {any} 配置文件数据
-         * @param folder {string} 加载项的路径前缀。
-         */
-        ResourceConfig.prototype.parseConfig = function (data) {
-            this.config = data;
-            RES.fileSystem = data.fileSystem;
-            // if (!data)
-            //     return;
-            // var resources: Array<any> = data["resources"];
-            // if (resources) {
-            //     var length: number = resources.length;
-            //     for (var i: number = 0; i < length; i++) {
-            //         var item: any = resources[i];
-            //         var url: string = item.url;
-            //         if (url && url.indexOf("://") == -1)
-            //             item.url = folder + url;
-            //         this.addItemToKeyMap(item);
-            //     }
-            // }
-            // var groups: Array<any> = data["groups"];
-            // if (groups) {
-            //     length = groups.length;
-            //     for (i = 0; i < length; i++) {
-            //         var group: any = groups[i];
-            //         var list: Array<any> = [];
-            //         var keys: Array<string> = (<string>group.keys).split(",");
-            //         var l: number = keys.length;
-            //         for (var j: number = 0; j < l; j++) {
-            //             var name: string = keys[j].trim();
-            //             item = this.keyMap[name];
-            //             if (item && list.indexOf(item) == -1) {
-            //                 list.push(item);
-            //             }
-            //         }
-            //         this.groupDic[group.name] = list;
-            //     }
-            // }
-        };
-        /**
          * 添加一个二级键名到配置列表。
          * @method RES.ResourceConfig#addSubkey
          * @param subkey {string} 要添加的二级键名
@@ -604,7 +281,7 @@ var RES;
             if (!data.type) {
                 data.type = this.__temp__get__type__via__url(data.url);
             }
-            RES.fileSystem.addFile(data.url, data.type, data.root, data.extra);
+            RES.config.config.fileSystem.addFile(data.url, data.type, data.root, data.extra);
             if (data.name) {
                 this.config.alias[data.name] = data.url;
             }
@@ -613,124 +290,15 @@ var RES;
             if (!RES.hasRes(data.name)) {
                 return;
             }
-            RES.fileSystem.removeFile(data.url);
+            RES.config.config.fileSystem.removeFile(data.url);
             if (this.config.alias[data.name]) {
                 delete this.config.alias[data.name];
             }
-        };
-        ResourceConfig.prototype.destory = function () {
-            RES.systemPid++;
-            var emptyFileSystem = {
-                getFile: function () {
-                    return null;
-                },
-                addFile: function () {
-                },
-                profile: function () {
-                },
-                removeFile: function () {
-                }
-            };
-            this.config = { groups: {}, alias: {}, loadGroup: [], fileSystem: emptyFileSystem, typeSelector: function (p) { return p; }, resourceRoot: "resources", mergeSelector: null };
         };
         return ResourceConfig;
     }());
     RES.ResourceConfig = ResourceConfig;
     __reflect(ResourceConfig.prototype, "RES.ResourceConfig");
-})(RES || (RES = {}));
-var RES;
-(function (RES) {
-    var __tempCache = {};
-    /**
-     * 整个资源加载系统的进程id，协助管理回调派发机制
-     */
-    RES.systemPid = 0;
-    RES.checkCancelation = function (target, propertyKey, descriptor) {
-        var method = descriptor.value;
-        descriptor.value = function () {
-            var arg = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                arg[_i] = arguments[_i];
-            }
-            var currentPid = RES.systemPid;
-            var result = method.apply(this, arg);
-            return result.then(function (value) {
-                if (RES.systemPid != currentPid) {
-                    throw new ResourceManagerError(1005, arg[0]);
-                }
-                else {
-                    return value;
-                }
-            });
-        };
-    };
-    function profile() {
-        RES.fileSystem.profile();
-        console.log(__tempCache);
-        //todo 
-        var totalImageSize = 0;
-        for (var key in __tempCache) {
-            var img = __tempCache[key];
-            if (img instanceof egret.Texture) {
-                totalImageSize += img.$bitmapWidth * img.$bitmapHeight * 4;
-            }
-        }
-        console.log("gpu size : " + (totalImageSize / 1024).toFixed(3) + "kb");
-    }
-    RES.profile = profile;
-    RES.host = {
-        state: {},
-        get resourceConfig() {
-            return RES.config;
-        },
-        load: function (r, processorName) {
-            var processor = typeof processorName == 'string' ? RES.processor._map[processorName] : processorName;
-            return RES.queue.loadResource(r, processor);
-        },
-        unload: function (r) { return RES.queue.unloadResource(r); },
-        save: function (resource, data) {
-            RES.host.state[resource.root + resource.name] = 2 /* saved */;
-            resource.promise = undefined;
-            __tempCache[resource.url] = data;
-        },
-        get: function (resource) {
-            return __tempCache[resource.url];
-        },
-        remove: function (resource) {
-            delete RES.host.state[resource.root + resource.name];
-            delete __tempCache[resource.url];
-        }
-    };
-    RES.config = new RES.ResourceConfig();
-    RES.queue = new RES.ResourceLoader();
-    var ResourceManagerError = (function (_super) {
-        __extends(ResourceManagerError, _super);
-        function ResourceManagerError(code, replacer, replacer2) {
-            var _this = _super.call(this) || this;
-            /**
-             * why instanceof e  != ResourceManagerError ???
-             * see link : https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-             */
-            _this.__resource_manager_error__ = true;
-            _this.name = code.toString();
-            _this.message = ResourceManagerError.errorMessage[code].replace("{0}", replacer).replace("{1}", replacer2);
-            return _this;
-        }
-        ResourceManagerError.errorMessage = {
-            1001: '文件加载失败:{0}',
-            1002: "ResourceManager 初始化失败：配置文件加载失败",
-            1005: 'ResourceManager 已被销毁，文件加载失败:{0}',
-            2001: "{0}解析失败,不支持指定解析类型:\'{1}\'，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
-            2002: "Analyzer 相关API 在 ResourceManager 中不再支持，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
-            2003: "{0}解析失败,错误原因:{1}",
-            2004: "无法找到文件类型:{0}",
-            2005: "资源配置文件中无法找到特定的资源组:{0}",
-            2006: "资源配置文件中无法找到特定的资源:{0}"
-        };
-        return ResourceManagerError;
-    }(Error));
-    RES.ResourceManagerError = ResourceManagerError;
-    __reflect(ResourceManagerError.prototype, "RES.ResourceManagerError");
 })(RES || (RES = {}));
 //////////////////////////////////////////////////////////////////////////////////////
 //
@@ -762,6 +330,359 @@ var RES;
 //////////////////////////////////////////////////////////////////////////////////////
 var RES;
 (function (RES) {
+    /**
+     * @class RES.ResourceLoader
+     * @classdesc
+     * @private
+     */
+    var ResourceLoader = (function () {
+        function ResourceLoader() {
+            /**
+             * 当前组加载的项总个数,key为groupName
+             */
+            this.groupTotalDic = {};
+            /**
+             * 已经加载的项个数,key为groupName
+             */
+            this.numLoadedDic = {};
+            /**
+             * 加载失败的组,key为groupName
+             */
+            this.groupErrorDic = {};
+            this.retryTimesDic = {};
+            this.maxRetryTimes = 3;
+            this.reporterDic = {};
+            this.dispatcherDic = {};
+            this.failedList = new Array();
+            this.loadItemErrorDic = {};
+            this.errorDic = {};
+            /**
+             * 资源优先级队列，key为资源，value为优先级
+             */
+            this.itemListPriorityDic = {};
+            /**
+             * 资源是否在加载
+             */
+            this.itemLoadDic = {};
+            this.promiseHash = {};
+            /**
+             * 延迟加载队列,getResByUrl ,getResAsync等方法存储队列
+             */
+            this.lazyLoadList = new Array();
+            this.loadingCount = 0;
+            /**
+             * 最大线程数目
+             */
+            this.thread = 4;
+        }
+        ResourceLoader.prototype.pushResItem = function (resInfo) {
+            if (this.promiseHash[resInfo.name]) {
+                return this.promiseHash[resInfo.name];
+            }
+            this.lazyLoadList.push(resInfo);
+            this.itemListPriorityDic[Number.NEGATIVE_INFINITY] = this.lazyLoadList;
+            this.updatelistPriority(this.lazyLoadList, Number.NEGATIVE_INFINITY);
+            var dispatcher = new egret.EventDispatcher();
+            this.dispatcherDic[resInfo.name] = dispatcher;
+            var promise = new Promise(function (resolve, reject) {
+                dispatcher.addEventListener("complete", function (e) {
+                    resolve(e.data);
+                }, null);
+                dispatcher.addEventListener("error", function (e) {
+                    reject(e.data);
+                }, null);
+            });
+            this.promiseHash[resInfo.name] = promise;
+            this.loadNextResource();
+            return promise;
+        };
+        /**
+         * 加载队列,存储组的队列
+         */
+        ResourceLoader.prototype.pushResGroup = function (list, groupName, priority, reporter) {
+            if (this.promiseHash[groupName]) {
+                return this.promiseHash[groupName];
+            }
+            var total = list.length;
+            for (var i = 0; i < total; i++) {
+                var resInfo = list[i];
+                if (!resInfo.groupNames) {
+                    resInfo.groupNames = [];
+                }
+                resInfo.groupNames.push(groupName);
+            }
+            this.groupTotalDic[groupName] = list.length;
+            this.numLoadedDic[groupName] = 0;
+            this.updatelistPriority(list, priority);
+            this.reporterDic[groupName] = reporter;
+            var dispatcher = new egret.EventDispatcher();
+            this.dispatcherDic[groupName] = dispatcher;
+            var promise = new Promise(function (resolve, reject) {
+                dispatcher.addEventListener("complete", resolve, null);
+                dispatcher.addEventListener("error", function (e) {
+                    reject(e.data);
+                }, null);
+            });
+            this.promiseHash[groupName] = promise;
+            this.loadNextResource();
+            return promise;
+        };
+        /**
+         * 更新组的优先级顺序
+         * @param list 存储数据的队列
+         * @param priority 优先级
+         */
+        ResourceLoader.prototype.updatelistPriority = function (list, priority) {
+            if (this.itemListPriorityDic[priority] == undefined) {
+                this.itemListPriorityDic[priority] = [];
+            }
+            for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
+                var item = list_1[_i];
+                if (this.itemLoadDic[item.name] == 1) {
+                    continue;
+                }
+                var oldPriority = this.findPriorityInDic(item);
+                if (oldPriority == undefined) {
+                    this.itemListPriorityDic[priority].push(item);
+                }
+                else {
+                    if (oldPriority < priority) {
+                        this.itemListPriorityDic[priority].push(item);
+                        var index = this.itemListPriorityDic[oldPriority].indexOf(item);
+                        this.itemListPriorityDic[oldPriority].splice(index, 1);
+                    }
+                }
+            }
+        };
+        /**
+         * 搜索单项资源的优先级
+         * @param item 单项资源
+         */
+        ResourceLoader.prototype.findPriorityInDic = function (item) {
+            for (var priority in this.itemListPriorityDic) {
+                if (this.itemListPriorityDic[priority].indexOf(item) > -1)
+                    return parseInt(priority);
+            }
+            return undefined;
+        };
+        /**
+         * 加载下一项资源，线程控制
+         */
+        ResourceLoader.prototype.loadNextResource = function () {
+            while (this.loadingCount < this.thread) {
+                var isload = this.loadSingleResource();
+                if (!isload) {
+                    break;
+                }
+            }
+        };
+        /**
+         * 加载单向资源
+         */
+        ResourceLoader.prototype.loadSingleResource = function () {
+            var _this = this;
+            var r = this.getOneResourceInfoInGroup();
+            if (!r)
+                return false;
+            this.itemLoadDic[r.name] = 1;
+            this.loadingCount++;
+            this.loadResource(r)
+                .then(function (response) {
+                _this.loadingCount--;
+                delete _this.itemLoadDic[r.name];
+                RES.host.save(r, response);
+                if (_this.promiseHash[r.name]) {
+                    var dispatcher = _this.deleteDispatcher(r.name);
+                    dispatcher.dispatchEventWith("complete", false, response);
+                }
+                var groupNames = r.groupNames;
+                if (groupNames) {
+                    delete r.groupNames;
+                    for (var _i = 0, groupNames_1 = groupNames; _i < groupNames_1.length; _i++) {
+                        var groupName = groupNames_1[_i];
+                        if (_this.setGroupProgress(groupName, r)) {
+                            _this.loadGroupEnd(groupName);
+                        }
+                    }
+                }
+                _this.loadNextResource();
+            }).catch(function (error) {
+                if (!error) {
+                    throw r.name + " load fail";
+                }
+                if (!error.__resource_manager_error__) {
+                    throw error;
+                }
+                delete _this.itemLoadDic[r.name];
+                _this.loadingCount--;
+                delete RES.host.state[r.root + r.name];
+                var times = _this.retryTimesDic[r.name] || 1;
+                if (times > _this.maxRetryTimes) {
+                    delete _this.retryTimesDic[r.name];
+                    if (_this.promiseHash[r.name]) {
+                        var dispatcher = _this.deleteDispatcher(r.name);
+                        dispatcher.dispatchEventWith("error", false, { r: r, error: error });
+                    }
+                    var groupNames = r.groupNames;
+                    if (groupNames) {
+                        delete r.groupNames;
+                        for (var _i = 0, groupNames_2 = groupNames; _i < groupNames_2.length; _i++) {
+                            var groupName = groupNames_2[_i];
+                            if (!_this.loadItemErrorDic[groupName]) {
+                                _this.loadItemErrorDic[groupName] = [];
+                            }
+                            if (_this.loadItemErrorDic[groupName].indexOf(r) == -1) {
+                                _this.loadItemErrorDic[groupName].push(r);
+                            }
+                            _this.groupErrorDic[groupName] = true;
+                            if (_this.setGroupProgress(groupName, r)) {
+                                _this.loadGroupEnd(groupName, error);
+                            }
+                            else {
+                                _this.errorDic[groupName] = error;
+                            }
+                        }
+                    }
+                    _this.loadNextResource();
+                }
+                else {
+                    _this.retryTimesDic[r.name] = times + 1;
+                    _this.failedList.push(r);
+                    _this.loadNextResource();
+                    return;
+                }
+            });
+            return true;
+        };
+        /**
+         * 获取下一个待加载项
+         */
+        ResourceLoader.prototype.getOneResourceInfoInGroup = function () {
+            if (this.failedList.length > 0)
+                return this.failedList.shift();
+            var maxPriority = Number.NEGATIVE_INFINITY;
+            for (var p in this.itemListPriorityDic) {
+                maxPriority = Math.max(maxPriority, p);
+            }
+            var list = this.itemListPriorityDic[maxPriority];
+            if (!list) {
+                return undefined;
+            }
+            if (list.length == 0) {
+                delete this.itemListPriorityDic[maxPriority];
+                return this.getOneResourceInfoInGroup();
+            }
+            return list.shift();
+        };
+        /**
+         * 设置组的加载进度，同时返回当前组是否加载完成
+         * @param groupName 组名
+         * @param r 加载完成的资源
+         */
+        ResourceLoader.prototype.setGroupProgress = function (groupName, r) {
+            var reporter = this.reporterDic[groupName];
+            this.numLoadedDic[groupName]++;
+            var current = this.numLoadedDic[groupName];
+            var total = this.groupTotalDic[groupName];
+            if (reporter && reporter.onProgress) {
+                reporter.onProgress(current, total, r);
+            }
+            return current == total;
+        };
+        /**
+         * 加载组的最后一项，同时派发事件
+         * @param groupName 组名
+         * @param lastError 最后一项是否成功，此项为错误信息
+         */
+        ResourceLoader.prototype.loadGroupEnd = function (groupName, lastError) {
+            delete this.groupTotalDic[groupName];
+            delete this.numLoadedDic[groupName];
+            delete this.reporterDic[groupName];
+            var dispatcher = this.deleteDispatcher(groupName);
+            if (!lastError) {
+                var groupError = this.groupErrorDic[groupName];
+                delete this.groupErrorDic[groupName];
+                if (groupError) {
+                    var itemList = this.loadItemErrorDic[groupName];
+                    delete this.loadItemErrorDic[groupName];
+                    var error = this.errorDic[groupName];
+                    delete this.errorDic[groupName];
+                    dispatcher.dispatchEventWith("error", false, { itemList: itemList, error: error });
+                }
+                else {
+                    dispatcher.dispatchEventWith("complete");
+                }
+            }
+            else {
+                delete this.groupErrorDic[groupName];
+                var itemList = this.loadItemErrorDic[groupName];
+                delete this.loadItemErrorDic[groupName];
+                dispatcher.dispatchEventWith("error", false, { itemList: itemList, lastError: lastError });
+            }
+        };
+        /**
+         * 删除组的事件派发器，Promise的缓存，返回事件派发器
+         * @param groupName 组名
+         */
+        ResourceLoader.prototype.deleteDispatcher = function (groupName) {
+            delete this.promiseHash[groupName];
+            var dispatcher = this.dispatcherDic[groupName];
+            delete this.dispatcherDic[groupName];
+            return dispatcher;
+        };
+        /**
+         * 加载资源
+         * @param r 资源信息
+         * @param p 加载处理器
+         */
+        ResourceLoader.prototype.loadResource = function (r, p) {
+            if (!p) {
+                if (RES.FEATURE_FLAG.FIX_DUPLICATE_LOAD == 1) {
+                    var s = RES.host.state[r.root + r.name];
+                    if (s == 2) {
+                        return Promise.resolve(RES.host.get(r));
+                    }
+                    if (s == 1) {
+                        return r.promise;
+                    }
+                }
+                p = RES.processor.isSupport(r);
+            }
+            if (!p) {
+                throw new RES.ResourceManagerError(2001, r.name, r.type);
+            }
+            RES.host.state[r.root + r.name] = 1;
+            var promise = p.onLoadStart(RES.host, r);
+            r.promise = promise;
+            return promise;
+        };
+        /**
+         * 释放资源
+         * @param r 资源信息
+         */
+        ResourceLoader.prototype.unloadResource = function (r) {
+            var data = RES.host.get(r);
+            if (!data) {
+                console.warn("尝试释放不存在的资源:", r.name);
+                return false;
+            }
+            var p = RES.processor.isSupport(r);
+            if (p) {
+                p.onRemoveStart(RES.host, r);
+                RES.host.remove(r);
+                if (r.extra == 1) {
+                    RES.config.removeResourceData(r);
+                }
+                return true;
+            }
+            else {
+                return true;
+            }
+        };
+        return ResourceLoader;
+    }());
+    RES.ResourceLoader = ResourceLoader;
+    __reflect(ResourceLoader.prototype, "RES.ResourceLoader");
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
@@ -799,81 +720,304 @@ var RES;
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
-    var NewFileSystem = (function () {
-        function NewFileSystem(data) {
-            this.data = data;
+    RES.cacheDuration = 30000;
+    var Loader = (function () {
+        function Loader() {
+            this.retry = 0;
         }
-        NewFileSystem.prototype.profile = function () {
-            console.log(this.data);
-        };
-        NewFileSystem.prototype.addFile = function (filename, type) {
-            if (!type)
-                type = "";
-            filename = RES.path.normalize(filename);
-            var basefilename = RES.path.basename(filename);
-            var folder = RES.path.dirname(filename);
-            if (!this.exists(folder)) {
-                this.mkdir(folder);
+        Loader.prototype.get = function (url, handle, priority) {
+            if (priority === void 0) { priority = 0; }
+            RES.addRel(url);
+            this.url = url;
+            var data = RES.getRes(url);
+            if (data != null) {
+                handle(data);
             }
-            var d = this.reslove(folder);
-            d[basefilename] = { url: filename, type: type };
-        };
-        NewFileSystem.prototype.getFile = function (filename) {
-            var result = this.reslove(filename);
-            if (result) {
-                result.name = filename;
+            else {
+                this.retry = 0;
+                this.dispatcher = RES.getDispatcher(url, priority);
+                this.handle = handle;
+                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
             }
-            return result;
         };
-        NewFileSystem.prototype.reslove = function (dirpath) {
-            if (dirpath == "") {
-                return this.data;
+        Loader.prototype.onEvent = function (e) {
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
             }
-            dirpath = RES.path.normalize(dirpath);
-            var list = dirpath.split("/");
-            var current = this.data;
-            for (var _i = 0, list_2 = list; _i < list_2.length; _i++) {
-                var f = list_2[_i];
-                if (current) {
-                    current = current[f];
+            if (this.handle) {
+                var _a = RES.config.getResourceWithSubkey(this.url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
+                var p = RES.processor.isSupport(r);
+                if (p && p.getData && subkey) {
+                    this.handle(p.getData(RES.host, r, key, subkey));
                 }
                 else {
-                    return current;
+                    this.handle(e.data);
                 }
-            }
-            return current;
-        };
-        NewFileSystem.prototype.mkdir = function (dirpath) {
-            dirpath = RES.path.normalize(dirpath);
-            var list = dirpath.split("/");
-            var current = this.data;
-            for (var _i = 0, list_3 = list; _i < list_3.length; _i++) {
-                var f = list_3[_i];
-                if (!current[f]) {
-                    current[f] = {};
-                }
-                current = current[f];
+                this.handle = undefined;
             }
         };
-        NewFileSystem.prototype.exists = function (dirpath) {
-            if (dirpath == "")
-                return true;
-            dirpath = RES.path.normalize(dirpath);
-            var list = dirpath.split("/");
-            var current = this.data;
-            for (var _i = 0, list_4 = list; _i < list_4.length; _i++) {
-                var f = list_4[_i];
-                if (!current[f]) {
-                    return false;
-                }
-                current = current[f];
+        Loader.prototype.onError = function () {
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
             }
-            return true;
+            if (this.retry < RES.maxRetry) {
+                this.retry++;
+                this.dispatcher = RES.getDispatcher(this.url, -this.retry);
+                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+            }
+            else {
+                this.handle = undefined;
+            }
         };
-        return NewFileSystem;
+        Loader.prototype.release = function () {
+            this.handle = undefined;
+            if (this.dispatcher) {
+                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
+                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
+                this.dispatcher = undefined;
+            }
+            if (this.url) {
+                RES.delRel(this.url);
+                this.url = undefined;
+            }
+        };
+        return Loader;
     }());
-    RES.NewFileSystem = NewFileSystem;
-    __reflect(NewFileSystem.prototype, "RES.NewFileSystem");
+    RES.Loader = Loader;
+    __reflect(Loader.prototype, "RES.Loader");
+    var LoadItem = (function () {
+        function LoadItem(url, priority) {
+            this.url = url;
+            this.priority = priority;
+            this.time = egret.getTimer();
+        }
+        return LoadItem;
+    }());
+    RES.LoadItem = LoadItem;
+    __reflect(LoadItem.prototype, "RES.LoadItem");
+    function comp(a, b) {
+        if (a.priority == b.priority) {
+            return a.time - b.time;
+        }
+        else {
+            return a.priority - b.priority;
+        }
+    }
+    RES.lazyLoadMap = {};
+    RES.lazyLoadList = [];
+    function asyncLoad(url, handle, priority) {
+        if (priority === void 0) { priority = 0; }
+        this.getDispatcher(url, priority).once(egret.Event.COMPLETE, function (e) {
+            var _a = RES.config.getResourceWithSubkey(url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
+            var p = RES.processor.isSupport(r);
+            if (p && p.getData && subkey) {
+                handle(p.getData(RES.host, r, key, subkey));
+            }
+            else {
+                handle(e.data);
+            }
+        }, null);
+    }
+    RES.asyncLoad = asyncLoad;
+    function changePriority(url, priority) {
+        if (priority === void 0) { priority = 0; }
+        var result = RES.config.getResourceWithSubkey(url, true);
+        var info = RES.lazyLoadMap[result.key];
+        if (info == null) {
+            return;
+        }
+        if (!info.dispatcher) {
+            return;
+        }
+        if (RES.lazyLoadList.indexOf(info) >= 0) {
+            info.priority = priority;
+            RES.lazyLoadList.sort(comp);
+        }
+    }
+    RES.changePriority = changePriority;
+    function getDispatcher(url, priority) {
+        if (priority === void 0) { priority = 0; }
+        var result = RES.config.getResourceWithSubkey(url, true);
+        var info = RES.lazyLoadMap[result.key];
+        if (info == null) {
+            info = new LoadItem(url, priority);
+            RES.lazyLoadMap[result.key] = info;
+        }
+        if (!info.dispatcher) {
+            info.time = egret.getTimer();
+            info.dispatcher = new egret.EventDispatcher();
+            if (RES.lazyLoadList.indexOf(info) >= 0) {
+                egret.error("duplicate " + url + " " + result.key);
+            }
+            else {
+                RES.lazyLoadList.push(info);
+                RES.lazyLoadList.sort(comp);
+            }
+            if (RES.loadingCount < RES.maxThread) {
+                egret.callLater(next, null);
+            }
+        }
+        return info.dispatcher;
+    }
+    RES.getDispatcher = getDispatcher;
+    RES.loadingCount = 0;
+    RES.maxThread = 2;
+    RES.maxRetry = 3;
+    function next() {
+        var _loop_1 = function () {
+            if (RES.lazyLoadList.length <= 0) {
+                return "break";
+            }
+            var info = RES.lazyLoadList.pop();
+            if (info.dispatcher) {
+                RES.loadingCount++;
+                var _a = RES.config.getResourceWithSubkey(info.url, true), key_1 = _a.key, r_1 = _a.r, subkey = _a.subkey;
+                RES.queue.pushResItem(r_1).then(function (value) {
+                    RES.host.save(r_1, value);
+                    RES.loadingCount--;
+                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
+                    if (dispathcher) {
+                        RES.lazyLoadMap[key_1].dispatcher = undefined;
+                        dispathcher.dispatchEventWith(egret.Event.COMPLETE, false, value, false);
+                    }
+                    else {
+                        egret.error(key_1 + " dispatcher is undefined");
+                    }
+                    if (RES.recycles[key_1]) {
+                        RES.recycles[key_1] = egret.getTimer() + ~~(RES.cacheDuration / 2);
+                    }
+                    egret.callLater(next, null);
+                }, function () {
+                    RES.loadingCount--;
+                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
+                    if (dispathcher) {
+                        RES.lazyLoadMap[key_1].dispatcher = undefined;
+                        dispathcher.dispatchEventWith(egret.IOErrorEvent.IO_ERROR);
+                    }
+                    else {
+                        egret.error(key_1 + " dispatcher is undefined");
+                    }
+                    RES.lazyLoadMap[key_1].dispatcher = undefined;
+                    RES.host.state[r_1.root + r_1.name] = 0 /* none */;
+                    egret.callLater(next, null);
+                });
+            }
+        };
+        while (RES.loadingCount < RES.maxThread) {
+            var state_1 = _loop_1();
+            if (state_1 === "break")
+                break;
+        }
+    }
+    RES.using = {};
+    RES.recycles = {};
+    function addRel(url) {
+        var key = RES.config.getResourceWithSubkey(url, true).key;
+        if (!RES.using[key]) {
+            if (RES.recycles[key] != null) {
+                delete RES.recycles[key];
+            }
+            RES.using[key] = 0;
+        }
+        RES.using[key]++;
+    }
+    RES.addRel = addRel;
+    function delRel(url, duration) {
+        if (duration === void 0) { duration = RES.cacheDuration; }
+        var key = RES.config.getResourceWithSubkey(url, true).key;
+        removes(key, 1, duration);
+    }
+    RES.delRel = delRel;
+    function removes(key, count, delay) {
+        var state = RES.getState(key);
+        if (!RES.using[key]) {
+            egret.error("remove resource fail not found " + key);
+            switch (state) {
+                case 1 /* loading */:
+                    RES.recycles[key] = egret.getTimer();
+                    break;
+                case 2 /* saved */:
+                    RES.destroyRes(key);
+                    break;
+            }
+            return;
+        }
+        RES.using[key] -= count;
+        if (RES.using[key] <= 0) {
+            RES.using[key] = 0;
+            switch (state) {
+                case 1 /* loading */:
+                case 2 /* saved */:
+                    var t = RES.recycles[key] || 0;
+                    RES.recycles[key] = Math.max(t, egret.getTimer() + delay);
+                    break;
+                default:
+                    var info = RES.lazyLoadMap[key];
+                    if (!info) {
+                        return;
+                    }
+                    if (info.dispatcher) {
+                        var i = RES.lazyLoadList.indexOf(info);
+                        if (i >= 0) {
+                            RES.lazyLoadList.splice(i, 1);
+                            info.dispatcher = undefined;
+                        }
+                    }
+                    break;
+            }
+        }
+    }
+    function startRecycleTimer(interval) {
+        setInterval(onRecycleTimer, interval);
+    }
+    RES.startRecycleTimer = startRecycleTimer;
+    function onRecycleTimer() {
+        var now = egret.getTimer();
+        for (var key in RES.recycles) {
+            if (now >= RES.recycles[key]) {
+                dispose(key);
+            }
+        }
+    }
+    function dispose(key) {
+        switch (RES.getState(key)) {
+            case 2 /* saved */:
+                RES.destroyRes(key);
+                delete RES.recycles[key];
+                break;
+            case 0 /* none */:
+            case 3 /* destroying */:
+                delete RES.recycles[key];
+                break;
+        }
+    }
+    function forceRecycle(n) {
+        var now = egret.getTimer() + n;
+        for (var key in RES.recycles) {
+            if (now >= RES.recycles[key]) {
+                dispose(key);
+            }
+        }
+    }
+    RES.forceRecycle = forceRecycle;
+})(RES || (RES = {}));
+var RES;
+(function (RES) {
+    var path;
+    (function (path_1) {
+        path_1.normalize = function (filename) {
+            var arr = filename.split("/");
+            return arr.filter(function (value, index) { return !!value || index == arr.length - 1; }).join("/");
+        };
+        path_1.basename = function (filename) {
+            return filename.substr(filename.lastIndexOf("/") + 1);
+        };
+        path_1.dirname = function (path) {
+            return path.substr(0, path.lastIndexOf("/"));
+        };
+    })(path = RES.path || (RES.path = {}));
 })(RES || (RES = {}));
 //////////////////////////////////////////////////////////////////////////////////////
 //
@@ -955,10 +1099,10 @@ var RES;
         processor_1.map = map;
         function promisify(loader, resource) {
             var _this = this;
-            return new Promise(function (reslove, reject) {
+            return new Promise(function (resolve, reject) {
                 var onSuccess = function () {
                     var texture = loader['data'] ? loader['data'] : loader['response'];
-                    reslove(texture);
+                    resolve(texture);
                 };
                 var onError = function () {
                     var e = new RES.ResourceManagerError(1001, resource.url);
@@ -1718,19 +1862,81 @@ var RES;
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
-    var path;
-    (function (path_1) {
-        path_1.normalize = function (filename) {
-            var arr = filename.split("/");
-            return arr.filter(function (value, index) { return !!value || index == arr.length - 1; }).join("/");
+    var NewFileSystem = (function () {
+        function NewFileSystem(data) {
+            this.data = data;
+        }
+        NewFileSystem.prototype.profile = function () {
+            console.log(this.data);
         };
-        path_1.basename = function (filename) {
-            return filename.substr(filename.lastIndexOf("/") + 1);
+        NewFileSystem.prototype.addFile = function (filename, type) {
+            if (!type)
+                type = "";
+            filename = RES.path.normalize(filename);
+            var basefilename = RES.path.basename(filename);
+            var folder = RES.path.dirname(filename);
+            if (!this.exists(folder)) {
+                this.mkdir(folder);
+            }
+            var d = this.resolve(folder);
+            d[basefilename] = { url: filename, type: type };
         };
-        path_1.dirname = function (path) {
-            return path.substr(0, path.lastIndexOf("/"));
+        NewFileSystem.prototype.getFile = function (filename) {
+            var result = this.resolve(filename);
+            if (result) {
+                result.name = filename;
+            }
+            return result;
         };
-    })(path = RES.path || (RES.path = {}));
+        NewFileSystem.prototype.resolve = function (dirpath) {
+            if (dirpath == "") {
+                return this.data;
+            }
+            dirpath = RES.path.normalize(dirpath);
+            var list = dirpath.split("/");
+            var current = this.data;
+            for (var _i = 0, list_2 = list; _i < list_2.length; _i++) {
+                var f = list_2[_i];
+                if (current) {
+                    current = current[f];
+                }
+                else {
+                    return current;
+                }
+            }
+            return current;
+        };
+        NewFileSystem.prototype.mkdir = function (dirpath) {
+            dirpath = RES.path.normalize(dirpath);
+            var list = dirpath.split("/");
+            var current = this.data;
+            for (var _i = 0, list_3 = list; _i < list_3.length; _i++) {
+                var f = list_3[_i];
+                if (!current[f]) {
+                    current[f] = {};
+                }
+                current = current[f];
+            }
+        };
+        NewFileSystem.prototype.exists = function (dirpath) {
+            if (dirpath == "")
+                return true;
+            dirpath = RES.path.normalize(dirpath);
+            var list = dirpath.split("/");
+            var current = this.data;
+            for (var _i = 0, list_4 = list; _i < list_4.length; _i++) {
+                var f = list_4[_i];
+                if (!current[f]) {
+                    return false;
+                }
+                current = current[f];
+            }
+            return true;
+        };
+        return NewFileSystem;
+    }());
+    RES.NewFileSystem = NewFileSystem;
+    __reflect(NewFileSystem.prototype, "RES.NewFileSystem");
 })(RES || (RES = {}));
 //////////////////////////////////////////////////////////////////////////////////////
 //
@@ -2322,18 +2528,11 @@ var RES;
             if (priority === void 0) { priority = 0; }
             var resources = RES.config.getGroupByName(name, true);
             if (resources.length == 0) {
-                return new Promise(function (reslove, reject) {
+                return new Promise(function (resolve, reject) {
                     reject({ error: new RES.ResourceManagerError(2006, name) });
                 });
             }
-            return RES.queue.load(resources, name, priority, reporter);
-        };
-        Resource.prototype.loadResources = function (keys, reporter) {
-            var resources = keys.map(function (key) {
-                var r = RES.config.getResourceWithSubkey(key, true);
-                return r.r;
-            });
-            return RES.queue.load(resources, "name", 0, reporter);
+            return RES.queue.pushResGroup(resources, name, priority, reporter);
         };
         /**
          * 创建自定义的加载资源组,注意：此方法仅在资源配置文件加载完成后执行才有效。
@@ -2395,7 +2594,7 @@ var RES;
             var _this = this;
             var paramKey = key;
             var _a = RES.config.getResourceWithSubkey(key, true), r = _a.r, subkey = _a.subkey;
-            return RES.queue.loadResource(r).then(function (value) {
+            return RES.queue.pushResItem(r).then(function (value) {
                 RES.host.save(r, value);
                 var p = RES.processor.isSupport(r);
                 if (p && p.getData && subkey) {
@@ -2435,7 +2634,7 @@ var RES;
                     throw 'never';
                 }
             }
-            return RES.queue.loadResource(r).then(function (value) {
+            return RES.queue.pushResItem(r).then(function (value) {
                 RES.host.save(r, value);
                 if (compFunc && r) {
                     compFunc.call(thisObject, value, r.url);
@@ -2505,7 +2704,7 @@ var RES;
             }
         };
         /**
-         * 设置最大并发加载线程数量，默认值是2.
+         * 设置最大并发加载线程数量，默认值是4.
          * @method RES.setMaxLoadingThread
          * @param thread {number} 要设置的并发加载数。
          */
@@ -2527,24 +2726,16 @@ var RES;
             RES.config.addResourceData(data);
         };
         __decorate([
-            RES.checkCancelation
-        ], Resource.prototype, "loadConfig", null);
-        __decorate([
-            RES.checkCancelation
-        ], Resource.prototype, "_loadGroup", null);
-        __decorate([
             RES.checkNull
         ], Resource.prototype, "hasRes", null);
         __decorate([
             RES.checkNull
         ], Resource.prototype, "getRes", null);
         __decorate([
-            RES.checkNull,
-            RES.checkCancelation
+            RES.checkNull
         ], Resource.prototype, "getResAsync", null);
         __decorate([
-            RES.checkNull,
-            RES.checkCancelation
+            RES.checkNull
         ], Resource.prototype, "getResByUrl", null);
         return Resource;
     }(egret.EventDispatcher));
@@ -2557,286 +2748,72 @@ var RES;
 })(RES || (RES = {}));
 var RES;
 (function (RES) {
-    RES.cacheDuration = 30000;
-    var Loader = (function () {
-        function Loader() {
-            this.retry = 0;
+    var __tempCache = {};
+    function profile() {
+        RES.config.config.fileSystem.profile();
+        console.log(__tempCache);
+        //todo 
+        var totalImageSize = 0;
+        for (var key in __tempCache) {
+            var img = __tempCache[key];
+            if (img instanceof egret.Texture) {
+                totalImageSize += img.$bitmapWidth * img.$bitmapHeight * 4;
+            }
         }
-        Loader.prototype.get = function (url, handle, priority) {
-            if (priority === void 0) { priority = 0; }
-            RES.addRel(url);
-            this.url = url;
-            var data = RES.getRes(url);
-            if (data != null) {
-                handle(data);
-            }
-            else {
-                this.retry = 0;
-                this.dispatcher = RES.getDispatcher(url, priority);
-                this.handle = handle;
-                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
-                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
-            }
+        console.log("gpu size : " + (totalImageSize / 1024).toFixed(3) + "kb");
+    }
+    RES.profile = profile;
+    RES.host = {
+        state: {},
+        get resourceConfig() {
+            return RES.config;
+        },
+        load: function (r, processorName) {
+            var processor = typeof processorName == 'string' ? RES.processor._map[processorName] : processorName;
+            return RES.queue["loadResource"](r, processor);
+        },
+        unload: function (r) { return RES.queue.unloadResource(r); },
+        save: function (resource, data) {
+            RES.host.state[resource.root + resource.name] = 2 /* saved */;
+            resource.promise = undefined;
+            __tempCache[resource.url] = data;
+        },
+        get: function (resource) {
+            return __tempCache[resource.url];
+        },
+        remove: function (resource) {
+            delete RES.host.state[resource.root + resource.name];
+            delete __tempCache[resource.url];
+        }
+    };
+    RES.config = new RES.ResourceConfig();
+    RES.queue = new RES.ResourceLoader();
+    var ResourceManagerError = (function (_super) {
+        __extends(ResourceManagerError, _super);
+        function ResourceManagerError(code, replacer, replacer2) {
+            var _this = _super.call(this) || this;
+            /**
+             * why instanceof e  != ResourceManagerError ???
+             * see link : https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
+             */
+            _this.__resource_manager_error__ = true;
+            _this.name = code.toString();
+            _this.message = ResourceManagerError.errorMessage[code].replace("{0}", replacer).replace("{1}", replacer2);
+            return _this;
+        }
+        ResourceManagerError.errorMessage = {
+            1001: '文件加载失败:{0}',
+            1002: "ResourceManager 初始化失败：配置文件加载失败",
+            1005: 'ResourceManager 已被销毁，文件加载失败:{0}',
+            2001: "{0}解析失败,不支持指定解析类型:\'{1}\'，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
+            2002: "Analyzer 相关API 在 ResourceManager 中不再支持，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
+            2003: "{0}解析失败,错误原因:{1}",
+            2004: "无法找到文件类型:{0}",
+            2005: "资源配置文件中无法找到特定的资源组:{0}",
+            2006: "资源配置文件中无法找到特定的资源:{0}"
         };
-        Loader.prototype.onEvent = function (e) {
-            if (this.dispatcher) {
-                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
-            }
-            if (this.handle) {
-                var _a = RES.config.getResourceWithSubkey(this.url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
-                var p = RES.processor.isSupport(r);
-                if (p && p.getData && subkey) {
-                    this.handle(p.getData(RES.host, r, key, subkey));
-                }
-                else {
-                    this.handle(e.data);
-                }
-                this.handle = undefined;
-            }
-        };
-        Loader.prototype.onError = function () {
-            if (this.dispatcher) {
-                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
-            }
-            if (this.retry < RES.maxRetry) {
-                this.retry++;
-                this.dispatcher = RES.getDispatcher(this.url, -this.retry);
-                this.dispatcher.once(egret.Event.COMPLETE, this.onEvent, this);
-                this.dispatcher.once(egret.IOErrorEvent.IO_ERROR, this.onError, this);
-            }
-            else {
-                this.handle = undefined;
-            }
-        };
-        Loader.prototype.release = function () {
-            this.handle = undefined;
-            if (this.dispatcher) {
-                this.dispatcher.removeEventListener(egret.Event.COMPLETE, this.onEvent, this);
-                this.dispatcher.removeEventListener(egret.IOErrorEvent.IO_ERROR, this.onError, this);
-                this.dispatcher = undefined;
-            }
-            if (this.url) {
-                RES.delRel(this.url);
-                this.url = undefined;
-            }
-        };
-        return Loader;
-    }());
-    RES.Loader = Loader;
-    __reflect(Loader.prototype, "RES.Loader");
-    var LoadItem = (function () {
-        function LoadItem(url, priority) {
-            this.url = url;
-            this.priority = priority;
-            this.time = egret.getTimer();
-        }
-        return LoadItem;
-    }());
-    RES.LoadItem = LoadItem;
-    __reflect(LoadItem.prototype, "RES.LoadItem");
-    function comp(a, b) {
-        if (a.priority == b.priority) {
-            return a.time - b.time;
-        }
-        else {
-            return a.priority - b.priority;
-        }
-    }
-    RES.lazyLoadMap = {};
-    RES.lazyLoadList = [];
-    function asyncLoad(url, handle, priority) {
-        if (priority === void 0) { priority = 0; }
-        this.getDispatcher(url, priority).once(egret.Event.COMPLETE, function (e) {
-            var _a = RES.config.getResourceWithSubkey(url, true), key = _a.key, r = _a.r, subkey = _a.subkey;
-            var p = RES.processor.isSupport(r);
-            if (p && p.getData && subkey) {
-                handle(p.getData(RES.host, r, key, subkey));
-            }
-            else {
-                handle(e.data);
-            }
-        }, null);
-    }
-    RES.asyncLoad = asyncLoad;
-    function changePriority(url, priority) {
-        if (priority === void 0) { priority = 0; }
-        var result = RES.config.getResourceWithSubkey(url, true);
-        var info = RES.lazyLoadMap[result.key];
-        if (info == null) {
-            return;
-        }
-        if (!info.dispatcher) {
-            return;
-        }
-        if (RES.lazyLoadList.indexOf(info) >= 0) {
-            info.priority = priority;
-            RES.lazyLoadList.sort(comp);
-        }
-    }
-    RES.changePriority = changePriority;
-    function getDispatcher(url, priority) {
-        if (priority === void 0) { priority = 0; }
-        var result = RES.config.getResourceWithSubkey(url, true);
-        var info = RES.lazyLoadMap[result.key];
-        if (info == null) {
-            info = new LoadItem(url, priority);
-            RES.lazyLoadMap[result.key] = info;
-        }
-        if (!info.dispatcher) {
-            info.time = egret.getTimer();
-            info.dispatcher = new egret.EventDispatcher();
-            if (RES.lazyLoadList.indexOf(info) >= 0) {
-                egret.error("duplicate " + url + " " + result.key);
-            }
-            else {
-                RES.lazyLoadList.push(info);
-                RES.lazyLoadList.sort(comp);
-            }
-            if (RES.loadingCount < RES.maxThread) {
-                egret.callLater(next, null);
-            }
-        }
-        return info.dispatcher;
-    }
-    RES.getDispatcher = getDispatcher;
-    RES.loadingCount = 0;
-    RES.maxThread = 2;
-    RES.maxRetry = 3;
-    function next() {
-        var _loop_3 = function () {
-            if (RES.lazyLoadList.length <= 0) {
-                return "break";
-            }
-            var info = RES.lazyLoadList.pop();
-            if (info.dispatcher) {
-                RES.loadingCount++;
-                var _a = RES.config.getResourceWithSubkey(info.url, true), key_1 = _a.key, r_1 = _a.r, subkey = _a.subkey;
-                RES.queue.loadResource(r_1).then(function (value) {
-                    RES.host.save(r_1, value);
-                    RES.loadingCount--;
-                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
-                    if (dispathcher) {
-                        RES.lazyLoadMap[key_1].dispatcher = undefined;
-                        dispathcher.dispatchEventWith(egret.Event.COMPLETE, false, value, false);
-                    }
-                    else {
-                        egret.error(key_1 + " dispatcher is undefined");
-                    }
-                    if (RES.recycles[key_1]) {
-                        RES.recycles[key_1] = egret.getTimer() + ~~(RES.cacheDuration / 2);
-                    }
-                    egret.callLater(next, null);
-                }, function () {
-                    RES.loadingCount--;
-                    var dispathcher = RES.lazyLoadMap[key_1].dispatcher;
-                    if (dispathcher) {
-                        RES.lazyLoadMap[key_1].dispatcher = undefined;
-                        dispathcher.dispatchEventWith(egret.IOErrorEvent.IO_ERROR);
-                    }
-                    else {
-                        egret.error(key_1 + " dispatcher is undefined");
-                    }
-                    RES.lazyLoadMap[key_1].dispatcher = undefined;
-                    RES.host.state[r_1.root + r_1.name] = 0 /* none */;
-                    egret.callLater(next, null);
-                });
-            }
-        };
-        while (RES.loadingCount < RES.maxThread) {
-            var state_2 = _loop_3();
-            if (state_2 === "break")
-                break;
-        }
-    }
-    RES.using = {};
-    RES.recycles = {};
-    function addRel(url) {
-        var key = RES.config.getResourceWithSubkey(url, true).key;
-        if (!RES.using[key]) {
-            if (RES.recycles[key] != null) {
-                delete RES.recycles[key];
-            }
-            RES.using[key] = 0;
-        }
-        RES.using[key]++;
-    }
-    RES.addRel = addRel;
-    function delRel(url, duration) {
-        if (duration === void 0) { duration = RES.cacheDuration; }
-        var key = RES.config.getResourceWithSubkey(url, true).key;
-        removes(key, 1, duration);
-    }
-    RES.delRel = delRel;
-    function removes(key, count, delay) {
-        var state = RES.getState(key);
-        if (!RES.using[key]) {
-            egret.error("remove resource fail not found " + key);
-            switch (state) {
-                case 1 /* loading */:
-                    RES.recycles[key] = egret.getTimer();
-                    break;
-                case 2 /* saved */:
-                    RES.destroyRes(key);
-                    break;
-            }
-            return;
-        }
-        RES.using[key] -= count;
-        if (RES.using[key] <= 0) {
-            RES.using[key] = 0;
-            switch (state) {
-                case 1 /* loading */:
-                case 2 /* saved */:
-                    var t = RES.recycles[key] || 0;
-                    RES.recycles[key] = Math.max(t, egret.getTimer() + delay);
-                    break;
-                default:
-                    var info = RES.lazyLoadMap[key];
-                    if (!info) {
-                        return;
-                    }
-                    if (info.dispatcher) {
-                        var i = RES.lazyLoadList.indexOf(info);
-                        if (i >= 0) {
-                            RES.lazyLoadList.splice(i, 1);
-                            info.dispatcher = undefined;
-                        }
-                    }
-                    break;
-            }
-        }
-    }
-    function startRecycleTimer(interval) {
-        setInterval(onRecycleTimer, interval);
-    }
-    RES.startRecycleTimer = startRecycleTimer;
-    function onRecycleTimer() {
-        var now = egret.getTimer();
-        for (var key in RES.recycles) {
-            if (now >= RES.recycles[key]) {
-                dispose(key);
-            }
-        }
-    }
-    function dispose(key) {
-        switch (RES.getState(key)) {
-            case 2 /* saved */:
-                RES.destroyRes(key);
-                delete RES.recycles[key];
-                break;
-            case 0 /* none */:
-            case 3 /* destroying */:
-                delete RES.recycles[key];
-                break;
-        }
-    }
-    function forceRecycle(n) {
-        var now = egret.getTimer() + n;
-        for (var key in RES.recycles) {
-            if (now >= RES.recycles[key]) {
-                dispose(key);
-            }
-        }
-    }
-    RES.forceRecycle = forceRecycle;
+        return ResourceManagerError;
+    }(Error));
+    RES.ResourceManagerError = ResourceManagerError;
+    __reflect(ResourceManagerError.prototype, "RES.ResourceManagerError");
 })(RES || (RES = {}));

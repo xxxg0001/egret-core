@@ -3159,6 +3159,10 @@ var eui;
             }
             var values = this.$Component;
             var oldSkin = values[8 /* skin */];
+            if (oldSkin && oldSkin["__proto__"] == skin["__proto__"]) {
+                console.log(this.skinName + "已经被定义");
+                return;
+            }
             if (oldSkin) {
                 var skinParts = oldSkin.skinParts;
                 var length_7 = skinParts.length;
@@ -17866,7 +17870,7 @@ var eui;
          *
          */
         EditableText.prototype.$onRemoveFromStage = function (notifyListeners) {
-            eui.sys.UIComponentImpl.prototype["$onRemoveFromStage"].call(this, notifyListeners);
+            _super.prototype.$onRemoveFromStage.call(this, notifyListeners);
             this.removeEventListener(egret.FocusEvent.FOCUS_IN, this.onfocusIn, this);
             this.removeEventListener(egret.FocusEvent.FOCUS_OUT, this.onfocusOut, this);
         };
@@ -21281,13 +21285,16 @@ var EXML;
      */
     function $parseURLContent(url, text) {
         var clazz = null;
-        if (text) {
+        if (text && typeof (text) == "string") {
             try {
                 clazz = parse(text);
             }
             catch (e) {
                 console.error(url + "\n" + e.message);
             }
+        }
+        if (text && text["prototype"]) {
+            clazz = text;
         }
         if (url) {
             if (clazz) {

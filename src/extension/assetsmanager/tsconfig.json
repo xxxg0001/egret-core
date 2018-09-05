@@ -29,7 +29,6 @@
         "src/shim/ResourceEvent.ts",
         "src/shim/ResourceItem.ts",
         "src/DEBUG.ts",
-        "../../../build/game/game.d.ts",
         "src/shim/Resource.ts",
         "src/shim/RescourceRecycler.ts"
     ]

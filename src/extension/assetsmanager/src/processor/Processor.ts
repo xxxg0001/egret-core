@@ -22,10 +22,10 @@ module RES.processor {
 
     function promisify(loader: egret.ImageLoader | egret.HttpRequest | egret.Sound, resource: ResourceInfo): Promise<any> {
 
-        return new Promise((reslove, reject) => {
+        return new Promise((resolve, reject) => {
             let onSuccess = () => {
                 let texture = loader['data'] ? loader['data'] : loader['response'];
-                reslove(texture);
+                resolve(texture);
             }
 
             let onError = () => {
@@ -196,7 +196,7 @@ module RES.processor {
                             texture["scale9Grid"] = new egret.Rectangle(parseInt(list[0]), parseInt(list[1]), parseInt(list[2]), parseInt(list[3]));
                         }
                     }
-                    host.save((<ResourceInfo>r), spriteSheet);
+                    host.save(r as ResourceInfo, spriteSheet);
                     return spriteSheet;
                 })
             })
@@ -274,7 +274,7 @@ module RES.processor {
                     host.state[(<ResourceInfo>r).root + (<ResourceInfo>r).name] = HostState.none;
                     var font = new egret.BitmapFont(texture, config);
                     font["$resourceInfo"] = r;
-                    host.save((<ResourceInfo>r), texture);
+                    host.save(r as ResourceInfo, texture);
                     return font;
                 })
             })

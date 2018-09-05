@@ -117,7 +117,7 @@ var AutoCompileCommand = /** @class */ (function () {
             var fileName;
             for (var i = 0, len = others.length; i < len; i++) {
                 fileName = others[i].fileName;
-                if (fileName.indexOf("tsconfig.json") > -1) {
+                if (fileName.indexOf("tsconfig.json") > -1) { //console.log("tsconfig 改变，重新编译项目");
                     this.compileProject.compileProject(egret.args);
                     this.messages[2] = egret.args.tsconfigError;
                 }

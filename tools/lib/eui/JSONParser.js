@@ -34,6 +34,7 @@ var DEBUG = false;
 var egretbridge_1 = require("./egretbridge");
 var JSONClass_1 = require("./JSONClass");
 var utils = require("../../lib/utils");
+var exml_1 = require("../../actions/exml");
 exports.eui = JSONClass_1.jsonFactory;
 exports.isError = false;
 var exmlParserPool = [];
@@ -150,7 +151,14 @@ var JSONParser = /** @class */ (function () {
             JSONClass_1.jsonFactory.addContent(path, this.className, "$path");
         }
         this.parseClass(xmlData, className);
-        return { className: className };
+        if (exml_1.isOneByOne) {
+            var json = exports.eui.toCode();
+            exports.eui.clear();
+            return { className: className, json: json };
+        }
+        else {
+            return { className: className };
+        }
     };
     /**
      * @private
@@ -262,7 +270,7 @@ var JSONParser = /** @class */ (function () {
             else if (node.nodeType === 1) {
                 var id = node.attributes["id"];
                 var stateGroups = node.attributes["stateGroups"];
-                if (id && stateGroups == undefined) {
+                if (id && stateGroups == undefined) { //区分是组件的id还是stateGroup的id
                     var e = new RegExp("^[a-zA-Z_$]{1}[a-z0-9A-Z_$]*");
                     if (id.match(e) == null) {
                         egretbridge_1.egretbridge.$warn(2022, id);
@@ -274,7 +282,7 @@ var JSONParser = /** @class */ (function () {
                         this.skinParts.push(id);
                     }
                     this.createVarForNode(node);
-                    if (this.isStateNode(node))
+                    if (this.isStateNode(node)) //检查节点是否只存在于一个状态里，需要单独实例化
                         this.stateIds.push(id);
                 }
                 else {

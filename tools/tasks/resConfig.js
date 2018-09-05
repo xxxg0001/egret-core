@@ -173,6 +173,11 @@ var TextureMergerResConfigPlugin = /** @class */ (function () {
         this.resourceConfig = {};
         /** 要打包的文件夹 */
         this.resourceDirs = {};
+        /**
+         * 检查是否一个json插入到不同的res.json中
+         * @param url
+         */
+        this.verboseHash = {};
         this.resourceConfigFiles = this.options.resourceConfigFiles.map(function (item) {
             var resourceConfigFile = path.posix.join(item.filename);
             _this.sheetRoot[resourceConfigFile] = item.root;
@@ -193,6 +198,7 @@ var TextureMergerResConfigPlugin = /** @class */ (function () {
                             isRes = true;
                         }
                     }
+                    //相对路径
                     else {
                         if (fileOrigin.indexOf(path.normalize(root)) >= 0) {
                             isRes = true;
@@ -309,6 +315,7 @@ var TextureMergerResConfigPlugin = /** @class */ (function () {
                 subkeys: subkeys,
                 url: this.getSpliceRoot(relativeJson, root)
             };
+            this.checkVerbose(json.url, filename);
             this.deleteReferenceByName(subkeysFile.name, resourceConfig_1, root);
             resourceConfig_1.resources.push(json);
             //png
@@ -356,6 +363,18 @@ var TextureMergerResConfigPlugin = /** @class */ (function () {
                 continue;
             }
         }
+    };
+    TextureMergerResConfigPlugin.prototype.checkVerbose = function (tmjson, resjson) {
+        if (!this.options.TM_Verbose)
+            return;
+        if (this.verboseHash[tmjson] == undefined) {
+            this.verboseHash[tmjson] = [];
+            this.verboseHash[tmjson].push(resjson);
+            return;
+        }
+        this.verboseHash[tmjson].push(resjson);
+        // console.log(this.verboseHash[tmjson].join(",    "));
+        console.log(utils.tr(1429, this.verboseHash[tmjson].join(",    ")));
     };
     return TextureMergerResConfigPlugin;
 }());
@@ -519,14 +538,14 @@ var vfs;
             if (!this.exists(folder)) {
                 this.mkdir(folder);
             }
-            var d = this.reslove(folder);
+            var d = this.resolve(folder);
             if (d) {
                 d[basefilename] = __assign({ url: url, type: type, name: name }, r);
             }
         };
         FileSystem.prototype.getFile = function (filename) {
             filename = this.normalize(filename);
-            return this.reslove(filename);
+            return this.resolve(filename);
         };
         FileSystem.prototype.basename = function (filename) {
             return filename.substr(filename.lastIndexOf("/") + 1);
@@ -538,7 +557,7 @@ var vfs;
         FileSystem.prototype.dirname = function (path) {
             return path.substr(0, path.lastIndexOf("/"));
         };
-        FileSystem.prototype.reslove = function (dirpath) {
+        FileSystem.prototype.resolve = function (dirpath) {
             if (dirpath == "") {
                 return this.root;
             }
