@@ -6,6 +6,18 @@ module RES {
         destroying = 3,
     }
     const __tempCache = {};
+    /**
+     * Print the memory occupied by the picture.
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language en_US
+     */
+    /**
+     * 打印图片所占内存
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language zh_CN
+     */
     export function profile() {
         config.config.fileSystem.profile();
         console.log(__tempCache);
@@ -19,7 +31,9 @@ module RES {
         }
         console.log("gpu size : " + (totalImageSize / 1024).toFixed(3) + "kb");
     }
-
+    /**
+    * @internal
+    */
     export var host: ProcessHost = {
 
         state: {},
@@ -38,25 +52,29 @@ module RES {
         save(resource: ResourceInfo, data: any) {
             host.state[resource.root + resource.name] = HostState.saved;
             resource.promise = undefined;
-            __tempCache[resource.url] = data;
+            __tempCache[resource.root + resource.name] = data;
         },
 
 
         get(resource: ResourceInfo) {
-            return __tempCache[resource.url];
+            return __tempCache[resource.root + resource.name];
         },
 
         remove(resource: ResourceInfo) {
             delete host.state[resource.root + resource.name];
-            delete __tempCache[resource.url];
+            delete __tempCache[resource.root + resource.name];
         }
     }
-
+    
     export var config = new ResourceConfig();
-
+    /**
+     * @internal
+     */
     export var queue = new ResourceLoader();
 
-
+    /**
+    * @private
+    */
     export interface ProcessHost {
 
         state: { [index: string]: HostState }
@@ -75,7 +93,9 @@ module RES {
 
 
     }
-
+    /**
+    * @private
+    */
     export class ResourceManagerError extends Error {
 
 
@@ -83,12 +103,11 @@ module RES {
         static errorMessage = {
             1001: '文件加载失败:{0}',
             1002: "ResourceManager 初始化失败：配置文件加载失败",
-            1005: 'ResourceManager 已被销毁，文件加载失败:{0}',
             2001: "{0}解析失败,不支持指定解析类型:\'{1}\'，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
             2002: "Analyzer 相关API 在 ResourceManager 中不再支持，请编写自定义 Processor ，更多内容请参见 https://github.com/egret-labs/resourcemanager/blob/master/docs/README.md#processor",
             2003: "{0}解析失败,错误原因:{1}",
             2004: "无法找到文件类型:{0}",
-            2005: "资源配置文件中无法找到特定的资源组:{0}",
+            2005: "RES加载了不存在或空的资源组:\"{0}\"",
             2006: "资源配置文件中无法找到特定的资源:{0}"
         }
 
@@ -110,19 +129,43 @@ module RES {
 
 namespace RES {
     /**
-     * Promise的回调函数集合
+     * Resource group loading progress prompt
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language en_US
+     */
+    /**
+     * 资源组的加载进度提示
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language zh_CN
      */
     export interface PromiseTaskReporter {
 
         /**
-         * 进度回调
+         * Progress callback, asynchronous execution, load number and order have nothing to do
+         * @param current The number of currently loaded
+         * @param total Total resources required in the current resource bundle
+         * @param resItem currently loading resource information
+         * @version Egret 5.2
+         * @platform Web,Native
+         * @language en_US
          */
-        onProgress?: (current: number, total: number, resItem: ResourceInfo | undefined) => void;
+        /**
+         * 进度回调，异步执行，加载数目和顺序无关
+         * @param current 当前已经加载数目
+         * @param total 当前资源包内需要资源总数
+         * @param resItem 当前加载资源信息
+         * @version Egret 5.2
+         * @platform Web,Native
+         * @language zh_CN
+         */
+        onProgress?(current: number, total: number, resItem: ResourceInfo | undefined): void;
 
         /**
          * 取消回调
          */
-        onCancel?: () => void;
+        // onCancel?: () => void;
 
     }
 }

@@ -46,7 +46,7 @@ export class BricksPlugin implements plugins.Command {
         return file;
     }
     async onFinish(pluginContext: plugins.CommandContext) {
-        //Õ¨≤Ωindex.html ≈‰÷√µΩmain.js
+        //ÂêåÊ≠•index.html ÈÖçÁΩÆÂà∞main.js
         let mainJSPath = path.join(pluginContext.outputDir, 'main.js');
         let mainJSContent = fs.readFileSync(mainJSPath, { encoding: "utf8" });
         let projectConfig = pluginContext.buildConfig.projectConfig;

@@ -267,10 +267,6 @@ namespace eui {
             }
             let values = this.$Component;
             let oldSkin: Skin = values[sys.ComponentKeys.skin];
-            if (oldSkin && oldSkin["__proto__"] == skin["__proto__"]) {
-                console.log(this.skinName + "已经被定义");
-                return
-            }
             if (oldSkin) {
                 let skinParts: string[] = oldSkin.skinParts;
                 let length = skinParts.length;

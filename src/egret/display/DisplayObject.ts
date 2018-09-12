@@ -589,6 +589,9 @@ namespace egret {
          */
         $setScaleX(value: number): void {
             let self = this;
+            if (self.$scaleX == value) {
+                return;
+            }
             self.$scaleX = value;
             self.$matrixDirty = true;
 
@@ -650,6 +653,9 @@ namespace egret {
          */
         $setScaleY(value: number): void {
             let self = this;
+            if (self.$scaleY == value) {
+                return;
+            }
             self.$scaleY = value;
             self.$matrixDirty = true;
 
@@ -883,7 +889,11 @@ namespace egret {
          * 设置显示宽度
          */
         $setWidth(value: number): void {
-            this.$explicitWidth = isNaN(value) ? NaN : value;
+            value = isNaN(value) ? NaN : value;
+            if (this.$explicitWidth == value) {
+                return;
+            }
+            this.$explicitWidth = value;
         }
 
         /**
@@ -923,7 +933,11 @@ namespace egret {
          * 设置显示高度
          */
         $setHeight(value: number): void {
-            this.$explicitHeight = isNaN(value) ? NaN : value;
+            value = isNaN(value) ? NaN : value;
+            if (this.$explicitHeight == value) {
+                return;
+            }
+            this.$explicitHeight = value;
         }
 
 
@@ -981,9 +995,24 @@ namespace egret {
          */
         $setAnchorOffsetX(value: number): void {
             let self = this;
+            if (self.$anchorOffsetX == value) {
+                return;
+            }
             self.$anchorOffsetX = value;
             if (egret.nativeRender) {
                 self.$nativeDisplayObject.setAnchorOffsetX(value);
+            }
+            else {
+                let p = self.$parent;
+                if (p && !p.$cacheDirty) {
+                    p.$cacheDirty = true;
+                    p.$cacheDirtyUp();
+                }
+                let maskedObject = self.$maskedObject;
+                if (maskedObject && !maskedObject.$cacheDirty) {
+                    maskedObject.$cacheDirty = true;
+                    maskedObject.$cacheDirtyUp();
+                }
             }
         }
 
@@ -1019,9 +1048,24 @@ namespace egret {
          */
         $setAnchorOffsetY(value: number): void {
             let self = this;
+            if (self.$anchorOffsetY == value) {
+                return;
+            }
             self.$anchorOffsetY = value;
             if (egret.nativeRender) {
                 self.$nativeDisplayObject.setAnchorOffsetY(value);
+            }
+            else {
+                let p = self.$parent;
+                if (p && !p.$cacheDirty) {
+                    p.$cacheDirty = true;
+                    p.$cacheDirtyUp();
+                }
+                let maskedObject = self.$maskedObject;
+                if (maskedObject && !maskedObject.$cacheDirty) {
+                    maskedObject.$cacheDirty = true;
+                    maskedObject.$cacheDirtyUp();
+                }
             }
         }
 
@@ -1055,6 +1099,9 @@ namespace egret {
 
         $setVisible(value: boolean): void {
             let self = this;
+            if (self.$visible == value) {
+                return;
+            }
             self.$visible = value;
             if (egret.nativeRender) {
                 self.$nativeDisplayObject.setVisible(value);
@@ -1183,6 +1230,9 @@ namespace egret {
          */
         $setAlpha(value: number): void {
             let self = this;
+            if (self.$alpha == value) {
+                return;
+            }
             self.$alpha = value;
 
             if (egret.nativeRender) {
@@ -1263,7 +1313,7 @@ namespace egret {
          * @private
          */
         $setTouchEnabled(value: boolean): void {
-            this.$touchEnabled = value;
+            this.$touchEnabled = !!value;
         }
 
         /**
@@ -1343,6 +1393,16 @@ namespace egret {
             }
             if (!egret.nativeRender) {
                 self.$updateRenderMode();
+                let p = self.$parent;
+                if (p && !p.$cacheDirty) {
+                    p.$cacheDirty = true;
+                    p.$cacheDirtyUp();
+                }
+                let maskedObject = self.$maskedObject;
+                if (maskedObject && !maskedObject.$cacheDirty) {
+                    maskedObject.$cacheDirty = true;
+                    maskedObject.$cacheDirtyUp();
+                }
             }
         }
 
@@ -1377,6 +1437,9 @@ namespace egret {
         public set blendMode(value: string) {
             let self = this;
             let mode = sys.blendModeToNumber(value);
+            if (self.$blendMode == mode) {
+                return;
+            }
             self.$blendMode = mode;
 
             if (egret.nativeRender) {

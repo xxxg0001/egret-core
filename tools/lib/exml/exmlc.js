@@ -261,7 +261,7 @@ var EXMLCompiler = /** @class */ (function () {
                     this.skinParts.push(node.$id);
                 }
                 this.createVarForNode(node);
-                if (this.isStateNode(node)) //检查节点是否只存在于一个状态里，需要单独实例化
+                if (this.isStateNode(node))
                     this.stateIds.push(node.$id);
             }
             else if (node.localName) {
@@ -442,7 +442,7 @@ var EXMLCompiler = /** @class */ (function () {
             if (!value) {
                 continue;
             }
-            if (this.currentClass.containsVar(value)) { //赋的值对象是一个id
+            if (this.currentClass.containsVar(value)) {
                 var id = node.$id;
                 var codeLine = "this." + id + " = t;";
                 if (!this.currentClass.containsVar(id))
@@ -710,7 +710,7 @@ var EXMLCompiler = /** @class */ (function () {
                     if (!this.exmlConfig.checkClassName(orgValue)) {
                         this.exit(2015, this.exmlPath, orgValue, this.toXMLString(node));
                     }
-                    if (value == this.currentClassName) { //防止无限循环。
+                    if (value == this.currentClassName) {
                         this.exit(2014, this.exmlPath, this.toXMLString(node));
                     }
                     break;

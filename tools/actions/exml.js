@@ -3,40 +3,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var Path = require("path");
 var file = require("../lib/FileUtil");
 var exml = require("../lib/eui/EXML");
-var EgretProject = require("../project");
 var exmlParser = require("../lib/eui/EXMLParser");
 var jsonParser = require("../lib/eui/JSONParser");
-function generateThemeData() {
-    //1.找到项目内后缀名为'.thm.json'的主题文件并返回列表
-    var themeFilenames = searchTheme();
-    //2.将主题文件读入内存变成json对象
-    var themeDatas = themeFilenames.map(function (filename) {
-        var content = file.read(file.joinPath(egret.args.projectDir, filename));
-        var data = JSON.parse(content);
-        data.path = filename;
-        return data;
-    });
-    return themeDatas;
-}
-function publishEXML(exmls, exmlPublishPolicy) {
-    if (!exmlPublishPolicy || exmlPublishPolicy == "default") {
-        exmlPublishPolicy = EgretProject.projectData.getExmlPublishPolicy();
-    }
-    else if (exmlPublishPolicy == 'debug') {
+function publishEXML(exmls, exmlPublishPolicy, themeDatas) {
+    if (exmlPublishPolicy == 'debug') {
         exmlPublishPolicy = 'path';
     }
-    var themeDatas = generateThemeData();
     var oldEXMLS = [];
-    //3.对于autoGenerateExmlsList属性的支持
+    //3.将所有的exml信息取出来
     themeDatas.forEach(function (theme) {
         if (!theme.exmls || theme.autoGenerateExmlsList) {
             theme.exmls = [];
             for (var _i = 0, exmls_1 = exmls; _i < exmls_1.length; _i++) {
                 var exml_1 = exmls_1[_i];
                 theme.exmls.push(exml_1.filename);
-            }
-            if (theme.autoGenerateExmlsList) {
-                file.save(Path.join(egret.args.projectDir, theme.path), JSON.stringify(theme, null, '\t'));
             }
         }
     });
@@ -72,6 +52,30 @@ function publishEXML(exmls, exmlPublishPolicy) {
             }
         }
     }
+    /**
+     * 因为底下发布策略是修改thm.json的元数据， 最后将写道thm.js中，gjs模式还会改变这个文件的格式
+     * 在这里直接对做完排序的文件进行autoGenerateExmlsList属性的支持
+     * todo：json应该直接维护好自己的，下面的发布最好改成新开辟一块空间做，而不是混在一起，虽然在commonjs或是gjs等模式下thm.json 已经不用了，但是这个文件很难做版本控制
+     */
+    //7.对于autoGenerateExmlsList属性的支持，是否将新的信息写回
+    themeDatas.forEach(function (theme) { return theme.exmls = []; });
+    screenExmls.forEach(function (e) {
+        exmlParser.fileSystem.set(e.filename, e);
+        var epath = e.filename;
+        themeDatas.forEach(function (thm) {
+            if (epath in oldEXMLS) {
+                var exmlFile = oldEXMLS[epath];
+                if (exmlFile.theme.indexOf("," + thm.path + ",") >= 0) {
+                    thm.exmls.push(epath);
+                }
+            }
+        });
+    });
+    themeDatas.map(function (thmData) {
+        if (thmData.autoGenerateExmlsList) {
+            file.save(Path.join(egret.args.projectDir, thmData.path), JSON.stringify(thmData, null, '\t'));
+        }
+    });
     themeDatas.forEach(function (theme) { return theme.exmls = []; });
     screenExmls.forEach(function (e) {
         exmlParser.fileSystem.set(e.filename, e);
@@ -192,28 +196,6 @@ function publishEXML(exmls, exmlPublishPolicy) {
     }
 }
 exports.publishEXML = publishEXML;
-function searchTheme() {
-    var result = EgretProject.projectData.getThemes();
-    if (result) {
-        return result;
-    }
-    var files = file.searchByFunction(egret.args.projectDir, themeFilter);
-    files = files.map(function (it) { return file.getRelativePath(egret.args.projectDir, it); });
-    return files;
-}
-var ignorePath = EgretProject.projectData.getIgnorePath();
-function exmlFilter(f) {
-    var isIgnore = false;
-    ignorePath.forEach(function (path) {
-        if (f.indexOf(path) != -1) {
-            isIgnore = true;
-        }
-    });
-    return /\.exml$/.test(f) && (f.indexOf(egret.args.releaseRootDir) < 0) && !isIgnore;
-}
-function themeFilter(f) {
-    return (f.indexOf('.thm.json') > 0) && (f.indexOf(egret.args.releaseRootDir) < 0);
-}
 function generateExmlDTS(exmls) {
     //去掉重复定义
     var classDefinations = {};

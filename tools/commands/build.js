@@ -60,7 +60,7 @@ var Build = /** @class */ (function () {
                         options = egret.args;
                         if (packageJsonContent = FileUtil.read(project.projectData.getFilePath("package.json"))) {
                             packageJson = JSON.parse(packageJsonContent);
-                            if (packageJson.modules) { //通过有modules来识别是egret库项目
+                            if (packageJson.modules) {
                                 globals.log(1119);
                                 globals.exit(1120);
                                 return [2 /*return*/, 0];

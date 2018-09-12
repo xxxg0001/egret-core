@@ -28,9 +28,6 @@
 //////////////////////////////////////////////////////////////////////////////////////
 type ResourceRootSelector<T extends string> = () => T;
 
-
-type ResourceTypeSelector = (file: string) => string;
-
 type ResourceNameSelector = (file: string) => string;
 
 type ResourceMergerSelector = (file: string) => { path: string, alias: string };
@@ -38,26 +35,46 @@ type ResourceMergerSelector = (file: string) => { path: string, alias: string };
 
 
 module RES {
-
-
-    export var resourceTypeSelector: ResourceTypeSelector;
-
+    /**
+     * @internal
+     */
     export var resourceNameSelector: ResourceNameSelector = (p) => p;
-
+    /**
+     * @internal
+     */
     export var resourceMergerSelector: ResourceMergerSelector | null;
 
-
+    /**
+     * Get resource information through file path
+     * @param path file path
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language en_US
+     */
+    /**
+     * 通过文件路径获取资源信息
+     * @param path 文件路径
+     * @version Egret 5.2
+     * @platform Web,Native
+     * @language zh_CN
+     */
     export function getResourceInfo(path: string): File | null {
-        let result =  config.config.fileSystem.getFile(path);
+        let result = config.config.fileSystem.getFile(path);
         if (!result) {
             path = RES.resourceNameSelector(path);
-            result =  config.config.fileSystem.getFile(path);
+            result = config.config.fileSystem.getFile(path);
         }
         return result;
     }
 
     var configItem: ResourceInfo;
 
+    /**
+     * 注册config的相关配置
+     * @internal
+     * @param url config的地址
+     * @param root 根路径
+     */
     export function setConfigURL(url: string, root: string) {
         let type;
         if (url.indexOf(".json") >= 0) {
@@ -68,7 +85,9 @@ module RES {
         }
         configItem = { type, root, url, name: url };
     }
-
+    /**
+    * @private
+    */
     export interface ResourceInfo {
 
         url: string;
@@ -94,12 +113,12 @@ module RES {
         promise?: Promise<any>;
 
     }
-
+    /**
+    * @private
+    */
     export interface Data {
 
         resourceRoot: string;
-
-        typeSelector: ResourceTypeSelector;
 
         mergeSelector: ResourceMergerSelector | null;
 
@@ -133,15 +152,21 @@ module RES {
             if (!this.config) {
                 this.config = {
                     alias: {}, groups: {}, resourceRoot: configItem.root,
-                    typeSelector: () => 'unknown', mergeSelector: null,
+                    mergeSelector: null,
                     fileSystem: null as any as FileSystem,
-                    loadGroup:[]
+                    loadGroup: []
                 }
             }
             return queue.pushResItem(configItem).catch(e => {
-                if (!e.__resource_manager_error__) {
-                    console.error(e.stack)
-                    e = new ResourceManagerError(1002);
+                if (!RES.isCompatible) {
+                    if (!e.__resource_manager_error__) {
+                        if (e.error) {
+                            console.error(e.error.stack);
+                        } else {
+                            console.error(e.stack);
+                        }
+                        e = new ResourceManagerError(1002);
+                    }
                 }
                 host.remove(configItem);
                 return Promise.reject(e);
@@ -161,11 +186,11 @@ module RES {
         /**
          * @internal
          */
-        public getGroupByName(name: string): ResourceInfo[] | null;
+        public getGroupByName(name: string): ResourceInfo[];
         /**
          * @internal
          */
-        public getGroupByName(name: string, shouldNotBeNull?: boolean): ResourceInfo[] | null {
+        public getGroupByName(name: string, shouldNotBeNull?: boolean): ResourceInfo[] {
 
             let group = this.config.groups[name];
             let result: ResourceInfo[] = [];
@@ -173,11 +198,28 @@ module RES {
                 if (shouldNotBeNull) {
                     throw new RES.ResourceManagerError(2005, name)
                 }
-                return null;
+                return result;
             }
             for (var paramKey of group) {
-                var { key, subkey } = config.getResourceWithSubkey(paramKey, true);
-                let r = config.getResource(key, true);
+                let tempResult;
+                if (!RES.isCompatible) {
+                    tempResult = config.getResourceWithSubkey(paramKey, true);
+                } else {
+                    tempResult = config.getResourceWithSubkey(paramKey);
+                    if (tempResult == null) {
+                        continue;
+                    }
+                }
+                var { key, subkey } = tempResult;
+                let r;
+                if (!RES.isCompatible) {
+                    r = config.getResource(key, true);
+                } else {
+                    r = config.getResource(key);
+                    if (r == null) {
+                        continue;
+                    }
+                }
                 if (result.indexOf(r) == -1) {
                     result.push(r);
                 }
@@ -193,8 +235,8 @@ module RES {
                 url = url_or_alias;
             }
 
-            if (resourceTypeSelector) {
-                let type = resourceTypeSelector(url);
+            if (RES.typeSelector) {
+                let type = RES.typeSelector(url);
                 if (!type) {
                     throw new ResourceManagerError(2004, url);
                 }
